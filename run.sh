@@ -2,7 +2,7 @@
 (
   # utilizing cmake's parallel build options
   # recommended: -j <number of processor cores + 1>
-  cmake --build build/release -j 5
+  cmake --build build/release -- -j 5
 )
 
 result=$?
