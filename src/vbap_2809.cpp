@@ -178,7 +178,7 @@ public:
 
 //        samplePlayer.load(searchpaths.find(files[fileMenu.get()]).filepath().c_str());
 
-        samplePlayer.load("sounds/count.wav");
+        samplePlayer.load("src/sounds/count.wav");
 
 
 //        samplePlayer.min(1.1);
@@ -397,11 +397,11 @@ public:
         cout << "Constructor" << endl;
         searchpaths.addAppPaths();
 //        searchpaths.addRelativePath("../sounds");
-        searchpaths.addRelativePath("sounds");
+        searchpaths.addRelativePath("src/sounds");
         searchpaths.print();
         //itemListInDir("../sounds").print();
 //        FileList fl = itemListInDir("../sounds");
-        FileList fl = itemListInDir("sounds");
+        FileList fl = itemListInDir("src/sounds");
         for(int i = 0; i < fl.count(); i++){
             string fPath = fl[i].filepath();
             fPath = fPath.substr(fPath.find_last_of("/\\")+1);
@@ -516,19 +516,19 @@ public:
                // v->vsBundle.bundleIndex()
                 switch (v->vsBundle.bundleIndex()) {
                     case 0:
-                        v->samplePlayer.load("sounds/pianoA.wav");
+                        v->samplePlayer.load("src/sounds/pianoA.wav");
                         v->enabled.set(1.f);
                         break;
                     case 1:
-                        v->samplePlayer.load("sounds/pianoB.wav");
+                        v->samplePlayer.load("src/sounds/pianoB.wav");
                         v->enabled.set(1.f);
                         break;
                     case 2:
-                        v->samplePlayer.load("sounds/pianoC.wav");
+                        v->samplePlayer.load("src/sounds/pianoC.wav");
                         v->enabled.set(1.f);
                         break;
                     case 3:
-                        v->samplePlayer.load("sounds/pianoD.wav");
+                        v->samplePlayer.load("src/sounds/pianoD.wav");
                         v->enabled.set(1.f);
                         break;
                     default:
@@ -1116,13 +1116,13 @@ int main(){
 
      //audioRate audioBlockSize audioOutputs audioInputs device
 
-    app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 60, 0, 1);
+    //app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 60, 0, 1);
     
     //-1 for audioOutputs or audioInputs opens all available channels. see: AudioIO::channels()
 //    app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 60, 0, 2);
 
     // Use this for 2809                   **CHANGE AUDIO INPUT TO 0 **
-    //app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 2, 0, AudioDevice("Aggregate Device").id());
+    app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 2, 0, AudioDevice("Aggregate Device").id());
 
     // Use this for sphere
     //    app.initAudio(44100, BLOCK_SIZE, -1, -1, AudioDevice("ECHO X5").id());
