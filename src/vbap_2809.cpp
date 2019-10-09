@@ -15,7 +15,9 @@
 #include <vector>
 
 #define SAMPLE_RATE 44100
-#define BLOCK_SIZE (2048)
+//#define BLOCK_SIZE (2048)
+// 1024 block size seems to fix issue where it sounded like samples were being dropped.
+#define BLOCK_SIZE (1024)
 #define MAX_DELAY 44100
 
 #define NUM_SOURCES 5
