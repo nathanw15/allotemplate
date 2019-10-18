@@ -71,6 +71,8 @@ ParameterBool setAllStartAzi("setAllStartAzi","",0.0);
 ParameterBool setAllEndAzi("setAllEndAzi","",0.0);
 Parameter setAllDurations("setAllDurations","",0.0,"",0.0,10.f);
 
+
+ParameterBool combineAllChannels("combineAllChannels","",0.0);
 //HtmlInterfaceServer interfaceServer("/Users/primary1/Documents/code/allolibCode/projects/interface.js");
 
 mutex enabledSpeakersLock;
@@ -412,7 +414,7 @@ public:
         }
 
         cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay;
+        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels;
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano;
@@ -880,6 +882,8 @@ public:
         //double sec;
         float srcBuffer[BLOCK_SIZE];
 
+        float enabledSources = 0.0f;
+
         float mGain = masterGain.get();
         gam::Sync::master().spu(audioIO().fps());
 
@@ -902,6 +906,7 @@ public:
 
                     for(VirtualSource *v: sources){
                         if(v->enabled){
+                            enabledSources += 1.0f;
                             float sample = v->getSample(t);
                             if(useDelay.get() == 1.f){
                                 renderSampleDelaySpeakers(io,v->aziInRad.get(),sample);
@@ -917,6 +922,7 @@ public:
 
                 for(VirtualSource *v: sources){
                     if(v->enabled){
+                        enabledSources += 1.0f;
                         v->getBuffer(t,srcBuffer);
                         if(useDelay.get() == 1.f){
                             renderBufferDelaySpeakers(io,v->aziInRad.get(), srcBuffer);
@@ -927,6 +933,47 @@ public:
                 }
             }
 
+
+
+            if(combineAllChannels.get() == 1.0f){
+                float combineBuffer[BLOCK_SIZE];
+                for(int i = 0; i < BLOCK_SIZE;i++){
+                    combineBuffer[i] = 0.0f;
+
+                }
+                        //combine all the channels into one buffer
+                        for (int speaker = 0; speaker < speakers.size(); speaker++) {
+                            if(!speakers[speaker].isPhantom){
+                                int deviceChannel = speakers[speaker].deviceChannel;
+
+                                for (int i = 0; i < io.framesPerBuffer(); i++) {
+                                     if(deviceChannel < io.channelsOut()) {
+                                        combineBuffer[i] += io.out(deviceChannel, i)/enabledSources;
+                                        
+                                    }
+                                }
+
+                            }
+                        }
+
+                        //copy combined buffer to all channels
+                        for (int speaker = 0; speaker < speakers.size(); speaker++) {
+                            if(!speakers[speaker].isPhantom){
+                                int deviceChannel = speakers[speaker].deviceChannel;
+
+                                for (int i = 0; i < io.framesPerBuffer(); i++) {
+                                     if(deviceChannel < io.channelsOut()) {
+                                         io.out(deviceChannel,i) = combineBuffer[i]*masterGain.get();
+                                        
+                                    }
+                                }
+
+                            }
+                        }
+
+               
+
+            }
 //            if(sampleWise.get() == 0.f){
 //                if(useDelay.get() == 1.f){
 //                    renderBufferDelaySpeakers(io,srcAzimuth.get(), srcBuffer);
