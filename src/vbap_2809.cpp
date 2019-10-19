@@ -32,6 +32,10 @@ ParameterBool updatePanner("updatePanner","",0.0);
 float radius = 5.0;
 
 
+ParameterBool aBSpeakers("aBSpeakers","",0.0);
+float speakerToggle = 5.0f; //Number of seconds
+
+
 //Parameter sourceSound("sourceSound","",0.0,"",0.0,3.0);
 //Parameter soundFileIdx("soundFileIdx","",0.0,"",0.0,3.0);
 
@@ -59,6 +63,10 @@ ParameterMenu setAllSoundFileIdx("setAllSoundFileIdx","",0,"");
 ParameterBool setAllEnabled("setAllEnabled","",0.0);
 
 ParameterBool setPiano("setPiano","",0.0);
+ParameterBool setMidiPiano("setMidiPiano","",0.0);
+
+
+
 
 Parameter setAllAzimuth("setAllAzimuth","",2.9,"",-1.0*M_PI,M_PI);
 Parameter azimuthSpread("azimuthSpread","",0.f,"",0.0,2.0*M_PI);
@@ -414,10 +422,10 @@ public:
         }
 
         cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels;
+        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << aBSpeakers;
         parameterGUI << srcPresets;
 
-        xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano;
+        xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
         parameterGUI << xsetAllBundle;
 
 
@@ -457,6 +465,7 @@ public:
 
         setAllEnabled.setHint("latch",1.f);
         setPiano.setHint("latch",1.f);
+        setMidiPiano.setHint("latch",1.f);
         //setAllPosUpdate.setHint("intcombo",1.f);
         //setAllSoundFileIdx.setHint("intcombo",1.f);
         setAllRatesToOne.setHint("latch",1.f);
@@ -533,6 +542,38 @@ public:
                         break;
                     case 3:
                         v->samplePlayer.load("src/sounds/pianoD.wav");
+                        v->enabled.set(1.f);
+                        break;
+                    default:
+                        v->enabled.set(0.f);
+                        break;
+                }
+//                if(v->vsBundle.bundleIndex() == 0){
+//                    v->samplePlayer.load("sounds/pianoA.wav");
+//
+//                }else
+                //v->enabled.set(val);
+            }
+        });
+
+         setMidiPiano.registerChangeCallback([&](float val){
+            for(VirtualSource *v: sources){
+               // v->vsBundle.bundleIndex()
+                switch (v->vsBundle.bundleIndex()) {
+                    case 0:
+                        v->samplePlayer.load("src/sounds/midiPiano.wav");
+                        v->enabled.set(1.f);
+                        break;
+                    case 1:
+                        v->samplePlayer.load("src/sounds/midiPiano.wav");
+                        v->enabled.set(1.f);
+                        break;
+                    case 2:
+                        v->samplePlayer.load("src/sounds/midiPiano.wav");
+                        v->enabled.set(1.f);
+                        break;
+                    case 3:
+                        v->samplePlayer.load("src/sounds/midiPiano.wav");
                         v->enabled.set(1.f);
                         break;
                     default:
@@ -879,6 +920,8 @@ public:
     virtual void onSound(AudioIOData &io) override {
 
         static unsigned int t = 0;
+
+        static unsigned int bufferCounter = 0;
         //double sec;
         float srcBuffer[BLOCK_SIZE];
 
@@ -917,6 +960,18 @@ public:
                     }
                 }
             }
+
+            bufferCounter++;
+            if(aBSpeakers.get() == 1.0f){
+            if(bufferCounter*BLOCK_SIZE > SAMPLE_RATE * speakerToggle){
+            	bufferCounter = 0;
+            	if(combineAllChannels.get() == 1.0f){
+            		combineAllChannels.set(0.0f);
+            	}else {
+            		combineAllChannels.set(1.0f);
+            	}
+            }
+        }
 
             if(sampleWise.get() == 0.f){
 
