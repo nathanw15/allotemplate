@@ -198,7 +198,8 @@ public:
        // fileIdx.setHint("intcombo",1.f);
         //positionUpdate.setHint("intcombo",1.f);
 
-        //cout << vsBundle.bundleIndex() << endl;
+        // cout << vsBundle.bundlePrefix() << endl;
+        //cout << enabled.prefix << endl;
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
         samplePlayer.rate(samplePlayerRate.get());
 
@@ -439,7 +440,8 @@ public:
             sources.push_back(newVS);
             // Register its parameter bundle with the ControlGUI
             parameterGUI << newVS->vsBundle;
-            //paramServer << newVS->vsBundle;
+
+            parameterServer() << newVS->vsBundle;
         }
 //        xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations;
 //        parameterGUI << xsetAllBundle;
@@ -460,8 +462,10 @@ public:
         //soundFileIdx.setHint("intcombo",1.f);
 
 
-        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay;
+        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle;
         //interfaceServer << parameterServer();
+
+
 
         setAllEnabled.setHint("latch",1.f);
         setPiano.setHint("latch",1.f);
