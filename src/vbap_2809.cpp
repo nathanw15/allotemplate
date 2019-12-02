@@ -25,6 +25,8 @@
 using namespace al;
 using namespace std;
 
+
+//osc::Send sender(9011, "127.0.0.1");
 //ParameterServer paramServer("127.0.0.1",8080);
 //Parameter srcAzimuth("srcAzimuth","",-0.5,"",-1.0*M_PI,M_PI);
 ParameterBool updatePanner("updatePanner","",0.0);
@@ -83,6 +85,10 @@ Parameter setAllDurations("setAllDurations","",0.0,"",0.0,10.f);
 ParameterBool combineAllChannels("combineAllChannels","",0.0);
 //HtmlInterfaceServer interfaceServer("/Users/primary1/Documents/code/allolibCode/projects/interface.js");
 
+Parameter setMorphTime("setMorphTime","",0.0,"",0.0, 10.0);
+Parameter recallPreset("recallPreset","",0.0,"",0.0, 30.0);
+
+
 mutex enabledSpeakersLock;
 
 struct Ramp {
@@ -122,7 +128,6 @@ struct Ramp {
         endSample = startSamp +  rampDuration.get() *SAMPLE_RATE;
         running = true;
         done = false;
-        //cout << startSamp << " endSamp: " << endSample << endl;
     }
 
     float next(unsigned int sampleNum){
@@ -183,23 +188,14 @@ public:
 
     VirtualSource(){
 
-//        vector<string> posUpdateNames = {"off", "trajectory", "moving"};
         positionUpdate.setElements(posUpdateNames);
 
         fileMenu.setElements(files);
 
-//        samplePlayer.load(searchpaths.find(files[fileMenu.get()]).filepath().c_str());
-
         samplePlayer.load("src/sounds/count.wav");
 
-
-//        samplePlayer.min(1.1);
         enabled.setHint("latch", 1.f);
-       // fileIdx.setHint("intcombo",1.f);
-        //positionUpdate.setHint("intcombo",1.f);
 
-        // cout << vsBundle.bundlePrefix() << endl;
-        //cout << enabled.prefix << endl;
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
         samplePlayer.rate(samplePlayerRate.get());
 
@@ -216,10 +212,6 @@ public:
             cout << "FileMenu val: " << val << endl;
             samplePlayer.load(searchpaths.find(files[val]).filepath().c_str());
         });
-
-//        fileIdx.registerChangeCallback([&](float val){
-//            samplePlayer.load(searchpaths.find(files[val]).filepath().c_str());
-//        });
 
         sourceRamp.triggerRamp.registerChangeCallback([&](float val){
             if(val == 1.f){ // is this correct way to check?
@@ -301,7 +293,6 @@ public:
         bufferSize = 44100*2;//MAKE WORK WITH MAX DELAY
 
         buffer = calloc(bufferSize,sizeof(float));
-        //cout << "Speaker: " << chan << " Write Pos: " << writePos << endl;
          //buffer = new float[bufferSize]();
 
       // buffer = new gam::Array<float>();
@@ -382,11 +373,6 @@ void initPanner(){
     //cout <<"panner init" << endl;
 }
 
-//void presetCB(int val, void *s, void *c){
-//    cout << "registerPresetCallback" << endl;
-//    initPanner();
-//}
-
 class MyApp : public App
 {
 public:
@@ -397,11 +383,7 @@ public:
     atomic<float> *mPeaks {nullptr};
     float speedMult = 0.03f;
     Vec3d srcpos {0.0,0.0,0.0};
-    //Ramp linearRamp;
-   // vector<gam::SamplePlayer<>*> samplePlayers;
-//    SearchPaths searchpaths;
     ControlGUI parameterGUI;
-
     ParameterBundle xsetAllBundle{"xsetAllBundle"};
 
     MyApp()
@@ -429,12 +411,6 @@ public:
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
         parameterGUI << xsetAllBundle;
 
-
-
-//        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay;
-//        interfaceServer << parameterServer();
-
-
         for(int i = 0; i < NUM_SOURCES; i++){
             auto *newVS = new VirtualSource; // This memory is not freed and it should be...
             sources.push_back(newVS);
@@ -443,39 +419,31 @@ public:
 
             parameterServer() << newVS->vsBundle;
         }
-//        xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations;
-//        parameterGUI << xsetAllBundle;
 
-        //parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase;
-
-       //interfaceServer << parameterServer();
-
-       // presets.registerPresetCallback(presetCB);
-
-       // paramServer << srcAzimuth << updatePanner << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << sourceSound << soundFileIdx << sampleWise << useDelay << masterGain << useRamp << soundOn;
-
-        //paramServer.print();
         soundOn.setHint("latch", 1.f);
         sampleWise.setHint("latch", 1.f);
         useDelay.setHint("latch",1.f);
-        //sourceSound.setHint("intcombo",1.f);
-        //soundFileIdx.setHint("intcombo",1.f);
 
-
-        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle;
-        //interfaceServer << parameterServer();
-
-
+        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels;
 
         setAllEnabled.setHint("latch",1.f);
         setPiano.setHint("latch",1.f);
         setMidiPiano.setHint("latch",1.f);
-        //setAllPosUpdate.setHint("intcombo",1.f);
-        //setAllSoundFileIdx.setHint("intcombo",1.f);
         setAllRatesToOne.setHint("latch",1.f);
         setAllPosUpdate.setElements(posUpdateNames);
 
         setAllSoundFileIdx.setElements(files);
+
+        setMorphTime.registerChangeCallback([&](float val){
+            srcPresets.setMorphTime(val);
+
+        });
+
+        recallPreset.registerChangeCallback([&](float val){
+            srcPresets.recallPreset(val);
+
+        });
+
 
         setPlayerPhase.registerChangeCallback([&](float val){
             VirtualSource *firstSource = sources[0];
@@ -659,6 +627,16 @@ public:
                 }
             }
         });
+
+
+        std::vector<Parameter *> paramsList = parameterServer().parameters();
+        cout << "paramList size: " << paramsList.size() << endl;
+        for(int i = 0; i < paramsList.size(); i++){
+            cout << "in stringparams" << endl;
+            cout << paramsList[i]->getFullAddress() << endl;
+        }
+
+        parameterServer().sendAllParameters("127.0.0.1", 9011);
     }
 
     void createMatrix(Vec3d left, Vec3d right){
@@ -1222,6 +1200,8 @@ int main(){
     MyApp app;
     AudioDevice::printAll();
 
+    
+    //sender.send("/test", 1.0f);
      //audioRate audioBlockSize audioOutputs audioInputs device
 
     //app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 60, 0, 1);
