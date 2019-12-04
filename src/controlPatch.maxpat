@@ -8,7 +8,7 @@
 			"architecture" : "x64"
 		}
 ,
-		"rect" : [ 529.0, 45.0, 891.0, 803.0 ],
+		"rect" : [ 416.0, 45.0, 891.0, 803.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -111,7 +111,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1159.0, 463.0, 142.0, 18.0 ],
-					"text" : "/3/angularFreq -0.29"
+					"text" : "/3/angularFreq -0.492"
 				}
 
 			}
@@ -386,7 +386,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1041.0, 344.0, 32.5, 18.0 ],
-					"presentation_rect" : [ 863.0, 201.0, 0.0, 0.0 ],
 					"text" : "0.5"
 				}
 
@@ -715,7 +714,7 @@
 					"presentation_rect" : [ 31.0, 446.5, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_longname" : "multislider[4]",
+							"parameter_longname" : "multislider[6]",
 							"parameter_shortname" : "multislider",
 							"parameter_type" : 3,
 							"parameter_initial_enable" : 1,
@@ -756,7 +755,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 66.0, 646.0, 201.0, 18.0 ],
-					"presentation_rect" : [ 68.5, 647.0, 0.0, 0.0 ],
 					"text" : "/xsetAllBundle/0/setPlayerPhase $1"
 				}
 
@@ -771,8 +769,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "float", "bang" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 66.0, 622.0, 126.0, 20.0 ],
-					"presentation_rect" : [ 68.5, 623.0, 0.0, 0.0 ]
+					"patching_rect" : [ 66.0, 622.0, 126.0, 20.0 ]
 				}
 
 			}
@@ -803,7 +800,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 276.5, 600.0, 140.0, 18.0 ],
-					"presentation_rect" : [ 272.0, 598.0, 0.0, 0.0 ],
 					"text" : "/combineAllChannels $1"
 				}
 
@@ -818,8 +814,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "float", "bang" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 276.5, 576.0, 50.0, 20.0 ],
-					"presentation_rect" : [ 272.0, 574.0, 0.0, 0.0 ]
+					"patching_rect" : [ 276.5, 576.0, 50.0, 20.0 ]
 				}
 
 			}
@@ -921,7 +916,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 377.0, 518.0, 101.0, 18.0 ],
-					"presentation_rect" : [ 372.0, 518.0, 0.0, 0.0 ],
 					"text" : "/resetSamples 1."
 				}
 
@@ -936,7 +930,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 572.5, 468.0, 97.0, 18.0 ],
-					"presentation_rect" : [ 510.0, 518.0, 0.0, 0.0 ],
 					"text" : "/0/fade 0.5 1000"
 				}
 
@@ -1068,7 +1061,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 32.0, 538.0, 182.0, 18.0 ],
-					"presentation_rect" : [ 32.0, 538.0, 0.0, 0.0 ],
 					"text" : "/xsetAllBundle/0/setMidiPiano 1."
 				}
 
@@ -1219,8 +1211,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "float", "bang" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 13.0, 335.0, 50.0, 20.0 ],
-					"presentation_rect" : [ 13.0, 340.0, 0.0, 0.0 ]
+					"patching_rect" : [ 13.0, 335.0, 50.0, 20.0 ]
 				}
 
 			}
@@ -1234,7 +1225,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 13.0, 360.0, 94.0, 18.0 ],
-					"presentation_rect" : [ 13.0, 365.0, 0.0, 0.0 ],
 					"text" : "/recallPreset $1"
 				}
 
@@ -2168,8 +2158,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 154.0, 136.0, 100.0, 18.0 ],
-					"text" : "host 192.168.0.3"
+					"patching_rect" : [ 154.0, 116.0, 113.0, 18.0 ],
+					"text" : "host 192.168.1.129"
 				}
 
 			}
@@ -2986,12 +2976,12 @@
 			}
  ],
 		"parameters" : 		{
+			"obj-90::obj-22" : [ "multislider[2]", "multislider", 0 ],
+			"obj-22" : [ "multislider[6]", "multislider", 0 ],
 			"obj-89::obj-22" : [ "multislider[1]", "multislider", 0 ],
-			"obj-150::obj-22" : [ "multislider[7]", "multislider", 0 ],
-			"obj-170::obj-22" : [ "multislider[8]", "multislider", 0 ],
-			"obj-22" : [ "multislider[4]", "multislider", 0 ],
-			"obj-149::obj-22" : [ "multislider[6]", "multislider", 0 ],
-			"obj-90::obj-22" : [ "multislider[5]", "multislider", 0 ]
+			"obj-170::obj-22" : [ "multislider[5]", "multislider", 0 ],
+			"obj-150::obj-22" : [ "multislider[4]", "multislider", 0 ],
+			"obj-149::obj-22" : [ "multislider[3]", "multislider", 0 ]
 		}
 ,
 		"dependency_cache" : [ 			{
