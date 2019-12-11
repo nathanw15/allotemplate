@@ -2,14 +2,19 @@
 #define GAMMA_H_NO_IO           // define this to avoid bringing AudioIO from Gamma
 
 #include "Gamma/Gamma.h"
-#include "al/core.hpp"
-#include "al/core/sound/al_Speaker.hpp"
-#include "al/util/ui/al_Parameter.hpp"
-#include "al/util/ui/al_ParameterServer.hpp"
+#include "al/app/al_App.hpp"
+#include "al/app/al_AudioApp.hpp"
+#include "al/graphics/al_Graphics.hpp"
+#include "al/graphics/al_Shapes.hpp"
+//#include "al/core.hpp"
+#include "al/sound/al_Speaker.hpp"
+#include "al/ui/al_Parameter.hpp"
+#include "al/ui/al_ParameterServer.hpp"
 #include "Gamma/SamplePlayer.h"
-#include "al/util/ui/al_ControlGUI.hpp"
+#include "al/ui/al_ControlGUI.hpp"
+#include "al/ui/al_HtmlInterfaceServer.hpp"
 
-#include "al/util/ui/al_HtmlInterfaceServer.hpp"
+#include "al_ext/spatialaudio/al_Decorrelation.hpp"
 
 #include <atomic>
 #include <vector>
@@ -33,10 +38,8 @@ ParameterBool updatePanner("updatePanner","",0.0);
 
 float radius = 5.0;
 
-
 ParameterBool aBSpeakers("aBSpeakers","",0.0);
 float speakerToggle = 5.0f; //Number of seconds
-
 
 //Parameter sourceSound("sourceSound","",0.0,"",0.0,3.0);
 //Parameter soundFileIdx("soundFileIdx","",0.0,"",0.0,3.0);
@@ -67,9 +70,6 @@ ParameterBool setAllEnabled("setAllEnabled","",0.0);
 ParameterBool setPiano("setPiano","",0.0);
 ParameterBool setMidiPiano("setMidiPiano","",0.0);
 
-
-
-
 Parameter setAllAzimuth("setAllAzimuth","",2.9,"",-1.0*M_PI,M_PI);
 Parameter azimuthSpread("azimuthSpread","",0.f,"",0.0,2.0*M_PI);
 
@@ -88,6 +88,7 @@ ParameterBool combineAllChannels("combineAllChannels","",0.0);
 Parameter setMorphTime("setMorphTime","",0.0,"",0.0, 10.0);
 Parameter recallPreset("recallPreset","",0.0,"",0.0, 30.0);
 
+ParameterBool decorrelate("decorrelate","",0.0);
 
 mutex enabledSpeakersLock;
 
@@ -242,6 +243,17 @@ public:
             break;
         }
     }
+    
+//    void setDecorrelationInputBuffer(){
+//        auto inBuffer = decorrelation.getInputBuffer(vsBundle.bundleIndex());
+//        for(int i = 0; i < BLOCK_SIZE; i++){
+//            if(samplePlayer.done()){
+//                samplePlayer.reset();
+//            }
+//            *inBuffer[i] = samplePlayer();
+//        }
+//
+//    }
 
     void getBuffer(unsigned int sampleNumber, float *buffer){
         updatePosition(sampleNumber);
@@ -385,6 +397,9 @@ public:
     Vec3d srcpos {0.0,0.0,0.0};
     ControlGUI parameterGUI;
     ParameterBundle xsetAllBundle{"xsetAllBundle"};
+    
+    Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
+    float mMaxjump{M_PI};
 
     MyApp()
     {
@@ -405,7 +420,7 @@ public:
         }
 
         cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << aBSpeakers;
+        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << aBSpeakers << decorrelate;
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
@@ -424,7 +439,7 @@ public:
         sampleWise.setHint("latch", 1.f);
         useDelay.setHint("latch",1.f);
 
-        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels;
+        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate;
 
         setAllEnabled.setHint("latch",1.f);
         setPiano.setHint("latch",1.f);
@@ -874,21 +889,35 @@ public:
             }
         }
 
-        audioIO().close();
+        //cout << "before audio close" << endl;
+        //audioIO().close();
         audioIO().channelsOut(highestChannel + 1);
-        audioIO().open();
+        //audioIO().open();
+
+
 
         mPeaks = new atomic<float>[highestChannel + 1];
 
         addSphere(mSpeakerMesh, 1.0, 5, 5);
+        
+//        map<uint32_t, vector<uint32_t>> routingMap = {
+//            {0, {0, 1}, 1, {2, 3}, 2, {4, 5}, 3, {6, 7}, 4, {8, 9}, 5, {10, 11}}};
+
+        //5 key values for now, one for each source
+        map<uint32_t, vector<uint32_t>> routingMap = {
+            {0, {0, 1}}, {1, {2, 3}}, {2, {4, 5}}, {3, {6, 7}}, {4, {8, 9}}};
+        
+        decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
+                                true, 1000, mMaxjump);
 
     }
 
     void onCreate() override {
-        cout << "onCreate()" << endl;
+        //cout << "onCreate()" << endl;
         nav().pos(0, 1, 20);
         parameterGUI.init();
         //initIMGUI();
+        audioIO().start();
     }
 
 //    void onExit() override {
@@ -902,17 +931,37 @@ public:
     virtual void onSound(AudioIOData &io) override {
 
         static unsigned int t = 0;
-
         static unsigned int bufferCounter = 0;
         //double sec;
         float srcBuffer[BLOCK_SIZE];
-
         float enabledSources = 0.0f;
-
         float mGain = masterGain.get();
         gam::Sync::master().spu(audioIO().fps());
 
         if(soundOn.get() > 0.5){
+            
+            //Try to copy audio for each source into decorr. input buffer here
+            
+            if(decorrelate.get() > 0.5){
+                for(VirtualSource *v: sources){
+                    if(v->enabled){
+//                        enabledSources += 1.0f;
+                        //v->setDecorrelationInputBuffer();
+
+                            auto inBuffer = decorrelation.getInputBuffer(v->vsBundle.bundleIndex());
+                            for(int i = 0; i < BLOCK_SIZE; i++){
+                                if(v->samplePlayer.done()){
+                                    v->samplePlayer.reset();
+                                }
+                                inBuffer[i] = v->samplePlayer();
+                            }
+
+                    }
+                }
+                decorrelation.processBuffer();
+            }
+            
+            
             while (io()) {
                 //int i = io.frame();
 //                if(sourceSound.get() == 0){
@@ -944,16 +993,16 @@ public:
             }
 
             bufferCounter++;
-            if(aBSpeakers.get() == 1.0f){
-            if(bufferCounter*BLOCK_SIZE > SAMPLE_RATE * speakerToggle){
-            	bufferCounter = 0;
-            	if(combineAllChannels.get() == 1.0f){
-            		combineAllChannels.set(0.0f);
-            	}else {
-            		combineAllChannels.set(1.0f);
-            	}
+            if(aBSpeakers.get() == 1.0f){ //Turns Combine All channels on and off
+                if(bufferCounter*BLOCK_SIZE > SAMPLE_RATE * speakerToggle){
+                    bufferCounter = 0;
+                    if(combineAllChannels.get() == 1.0f){
+                        combineAllChannels.set(0.0f);
+                    }else {
+                        combineAllChannels.set(1.0f);
+                    }
+                }
             }
-        }
 
             if(sampleWise.get() == 0.f){
 
@@ -976,7 +1025,6 @@ public:
                 float combineBuffer[BLOCK_SIZE];
                 for(int i = 0; i < BLOCK_SIZE;i++){
                     combineBuffer[i] = 0.0f;
-
                 }
                         //combine all the channels into one buffer
                         for (int speaker = 0; speaker < speakers.size(); speaker++) {
@@ -989,7 +1037,6 @@ public:
                                         
                                     }
                                 }
-
                             }
                         }
 
@@ -1004,12 +1051,8 @@ public:
                                         
                                     }
                                 }
-
                             }
                         }
-
-               
-
             }
 //            if(sampleWise.get() == 0.f){
 //                if(useDelay.get() == 1.f){
@@ -1136,7 +1179,7 @@ public:
 //        endIMGUI();
     }
 
-    virtual void onKeyDown(const Keyboard &k) override {
+    bool onKeyDown(const Keyboard &k) override {
       if (k.alt()) {
         switch (k.key()) {
         case '1':
@@ -1210,8 +1253,12 @@ int main(){
 //    app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 60, 0, 2);
 
     // Use this for 2809                   **CHANGE AUDIO INPUT TO 0 **
-    app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 2, 0, AudioDevice("Aggregate Device").id());
+    //app.initAudio(SAMPLE_RATE, BLOCK_SIZE, 2, 0, AudioDevice("Aggregate Device").id());
 
+    AudioDevice dev = AudioDevice("Aggregate Device").id();
+    app.configureAudio(dev, SAMPLE_RATE, BLOCK_SIZE, 2, 0);
+
+    //app.configureAudio(SAMPLE_RATE,);
     // Use this for sphere
     //    app.initAudio(44100, BLOCK_SIZE, -1, -1, AudioDevice("ECHO X5").id());
 

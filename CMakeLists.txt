@@ -7,6 +7,7 @@ set(APP_NAME app)
 
 # path to main source file
 add_executable(${APP_NAME} src/vbap_2809.cpp)
+#add_executable(${APP_NAME} al_ext/spatialaudio/examples/decorrelation.cpp)
 
 # add allolib as a subdirectory to the project
 add_subdirectory(allolib)
