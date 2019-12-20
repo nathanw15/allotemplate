@@ -1,4 +1,4 @@
- #define GAMMA_H_INC_ALL         // define this to include all header files
+#define GAMMA_H_INC_ALL         // define this to include all header files
 #define GAMMA_H_NO_IO           // define this to avoid bringing AudioIO from Gamma
 
 #include "Gamma/Gamma.h"
@@ -15,6 +15,8 @@
 #include "al/ui/al_HtmlInterfaceServer.hpp"
 
 #include "al_ext/spatialaudio/al_Decorrelation.hpp"
+
+#include "al/graphics/al_Font.hpp"
 
 #include <atomic>
 #include <vector>
@@ -34,7 +36,7 @@ using namespace std;
 //osc::Send sender(9011, "127.0.0.1");
 //ParameterServer paramServer("127.0.0.1",8080);
 //Parameter srcAzimuth("srcAzimuth","",-0.5,"",-1.0*M_PI,M_PI);
-ParameterBool updatePanner("updatePanner","",0.0);
+//ParameterBool updatePanner("updatePanner","",0.0);
 
 float radius = 5.0;
 
@@ -99,6 +101,9 @@ Parameter recallPreset("recallPreset","",0.0,"",0.0, 30.0);
 
 ParameterBool decorrelate("decorrelate","",0.0);
 
+ParameterMenu speakerDensity("speakerDensity","",0,"");
+vector<string> spkDensityMenuNames{"All", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
+
 mutex enabledSpeakersLock;
 
 struct Ramp {
@@ -108,16 +113,21 @@ struct Ramp {
     bool running = false;
     bool trigger = false;
 
-    ParameterBundle rampBundle{"rampBundle"};
-    ParameterBool triggerRamp{"triggerRamp","",0.0};
-    Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
-    Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
-    Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
+   // ParameterBundle rampBundle{"rampBundle"};
+//    ParameterBool triggerRamp{"triggerRamp","",0.0};
+    //Trigger triggerRamp{"triggerRamp","",""};
+//    Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
+//    Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
+//    Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
+
+    float rampStartAzimuth = 0.0f;
+    float rampEndAzimuth = 0.0f;
+    float rampDuration = 0.0f;
 
     Ramp(){
 
 
-        rampBundle  << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration;
+       // rampBundle  << rampStartAzimuth << rampEndAzimuth << rampDuration;
 
 //        triggerRamp.registerChangeCallback([&](float val){
 //            if(val == 1.f){ // is this correct way to check?
@@ -128,16 +138,25 @@ struct Ramp {
     }
 
     void set(float startAzi, float endAzi, float dur){
-        rampStartAzimuth.set(startAzi);
-        rampEndAzimuth.set(endAzi);
-        rampDuration.set(dur);
+//        rampStartAzimuth.set(startAzi);
+//        rampEndAzimuth.set(endAzi);
+//        rampDuration.set(dur);
+        rampStartAzimuth = startAzi;
+        rampEndAzimuth = endAzi;
+        rampDuration = dur;
     }
+
 
     void start(unsigned int startSamp){
         startSample = startSamp;
-        endSample = startSamp +  rampDuration.get() *SAMPLE_RATE;
+//        endSample = startSamp +  rampDuration.get() *SAMPLE_RATE;
+                endSample = startSamp +  rampDuration *SAMPLE_RATE;
         running = true;
         done = false;
+    }
+
+    void triggerRamp(){
+        trigger = true;
     }
 
     float next(unsigned int sampleNum){
@@ -148,7 +167,8 @@ struct Ramp {
         }
 
         if(!done && !running){
-            return rampStartAzimuth.get();
+//            return rampStartAzimuth.get();
+                        return rampStartAzimuth;
         }else if(!done && running){
 
             if(sampleNum > endSample){
@@ -156,10 +176,13 @@ struct Ramp {
                 done = true;
                 running = false;
             }
-            float val = (((sampleNum - startSample) * (rampEndAzimuth.get() - rampStartAzimuth.get())) / (endSample - startSample)) + rampStartAzimuth.get();
+//            float val = (((sampleNum - startSample) * (rampEndAzimuth.get() - rampStartAzimuth.get())) / (endSample - startSample)) + rampStartAzimuth.get();
+            float val = (((sampleNum - startSample) * (rampEndAzimuth - rampStartAzimuth)) / (endSample - startSample)) + rampStartAzimuth;
+
             return val;
         } else {
-            return rampEndAzimuth.get();
+//            return rampEndAzimuth.get();
+            return rampEndAzimuth;
         }
     }
 };
@@ -191,6 +214,12 @@ public:
     Parameter samplePlayerRate {"samplePlayerRate","",1.f,"",1.f,1.5f};
     ParameterMenu fileMenu{"fileMenu","",0,""};
     Ramp sourceRamp;
+    Trigger triggerRamp{"triggerRamp","",""};
+
+        Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
+        Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
+        Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
+
     int previousSamp = 0;
 
     VirtualSource(){
@@ -200,6 +229,11 @@ public:
         samplePlayer.load("src/sounds/count.wav");
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
         samplePlayer.rate(samplePlayerRate.get());
+
+
+        sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
+        sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
+        sourceRamp.rampDuration = rampDuration.get();
 
         aziInRad.setProcessingCallback([&](float val){
             wrapValues(val);
@@ -215,14 +249,39 @@ public:
             samplePlayer.load(searchpaths.find(files[val]).filepath().c_str());
         });
 
-        sourceRamp.triggerRamp.registerChangeCallback([&](float val){
+//        sourceRamp.triggerRamp.registerChangeCallback([&](float val){
+//            if(val == 1.f){ // is this correct way to check?
+//                //cout << "Ramp triggered" << endl;
+//                sourceRamp.trigger = true;
+//                samplePlayer.reset();
+//            }
+//        });
+
+        triggerRamp.registerChangeCallback([&](float val){
             if(val == 1.f){ // is this correct way to check?
                 //cout << "Ramp triggered" << endl;
-                sourceRamp.trigger = true;
+//                sourceRamp.trigger = true;
+                sourceRamp.triggerRamp();
                 samplePlayer.reset();
             }
         });
-        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << sourceRamp.triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
+
+        rampStartAzimuth.registerChangeCallback([&](float val){
+                sourceRamp.rampStartAzimuth = val;
+        });
+
+        rampEndAzimuth.registerChangeCallback([&](float val){
+                sourceRamp.rampEndAzimuth = val;
+        });
+
+        rampDuration.registerChangeCallback([&](float val){
+                sourceRamp.rampDuration = val;
+        });
+
+
+//        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
+        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq;
+
         srcPresets << vsBundle;
     }
 
@@ -385,6 +444,9 @@ public:
     Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
     float mMaxjump{M_PI};
 
+//    Font font;
+//    Mesh fontMesh;
+
     MyApp()
     {
 
@@ -402,7 +464,7 @@ public:
         }
 
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate;
+        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << speakerDensity;
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
@@ -427,10 +489,12 @@ public:
 //        setMidiPiano.setHint("latch",1.f);
 //        setAllRatesToOne.setHint("latch",1.f);
 
-        parameterServer() << soundOn << resetSamples << updatePanner << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << speakerDensity;
 
         setAllPosUpdate.setElements(posUpdateNames);
         setAllSoundFileIdx.setElements(files);
+
+        speakerDensity.setElements(spkDensityMenuNames);
 
         setMorphTime.registerChangeCallback([&](float val){
             srcPresets.setMorphTime(val);
@@ -560,7 +624,8 @@ public:
         triggerAllRamps.registerChangeCallback([&](float val){
             if(val == 1.f){
                 for(VirtualSource *v: sources){
-                    v->sourceRamp.triggerRamp.set(1.f);
+//                    v->sourceRamp.triggerRamp.set(1.f);
+                    v->triggerRamp.set(1.f);
                 }
             }
         });
@@ -568,7 +633,7 @@ public:
         setAllStartAzi.registerChangeCallback([&](float val){
             if(val == 1.f){
                 for(VirtualSource *v: sources){
-                    v->sourceRamp.rampStartAzimuth.set(v->aziInRad);
+                    v->rampStartAzimuth.set(v->aziInRad);
                 }
             }
         });
@@ -576,7 +641,7 @@ public:
         setAllEndAzi.registerChangeCallback([&](float val){
             if(val == 1.f){
                 for(VirtualSource *v: sources){
-                    v->sourceRamp.rampEndAzimuth.set(v->aziInRad);
+                    v->rampEndAzimuth.set(v->aziInRad);
                 }
             }
         });
@@ -584,16 +649,16 @@ public:
         setAllDurations.registerChangeCallback([&](float val){
 
             for(VirtualSource *v: sources){
-                v->sourceRamp.rampDuration.set(val);
+                v->rampDuration.set(val);
             }
         });
 
-        updatePanner.registerChangeCallback([&](float val){
-            if(val == 1.f){ // is this correct way to check?
-                cout << "panner Updated" << endl;
-                initPanner();
-            }
-        });
+//        updatePanner.registerChangeCallback([&](float val){
+//            if(val == 1.f){ // is this correct way to check?
+//                cout << "panner Updated" << endl;
+//                initPanner();
+//            }
+//        });
 
         maxDelay.registerChangeCallback([&](float val){
             //cout << maxDelay.get() << " " << val << endl;
@@ -609,6 +674,25 @@ public:
                     v->samplePlayer.reset();
                 }
             }
+        });
+
+        speakerDensity.registerChangeCallback([&](float val){
+
+            //cout << "Menu item chosen: " << val << endl;
+            for(int i = 0; i < speakers.size(); i++){
+                SpeakerV v = speakers[i];
+                if(v.deviceChannel != -1){
+                    int tempVal = v.deviceChannel % ((int)val+1);
+                    //cout << "TempVal " << tempVal << endl;
+                    if(tempVal == 0){
+                        v.enabled->set(1.0f);
+                    }else {
+                        v.enabled->set(0.0f);
+                    }
+                }
+            }
+
+
         });
 
 
@@ -852,6 +936,14 @@ public:
         //cout << "onCreate()" << endl;
         nav().pos(0, 1, 20);
         parameterGUI.init();
+
+//        bool fontLoaded;
+
+//        fontLoaded =font.load("data/VeraMono.ttf", 28, 1024);
+//        cout << "Font loaded: " << fontLoaded << endl;
+//        font.alignCenter();
+//        font.write(fontMesh, "1", 0.2f);
+
         //speakerGUI.init();
         //initIMGUI();
         audioIO().start();
@@ -1046,6 +1138,17 @@ public:
         g.blending(true);
         g.blendModeAdd();
 
+
+//        g.color(1.0);
+//        //g.texture();
+//        //g.blendModeTrans();
+//        font.write(fontMesh,"Test",0.2f);
+//        g.texture();
+//        font.tex.bind();
+//        g.draw(fontMesh);
+//        font.tex.unbind();
+
+
         g.pushMatrix();
         Mesh lineMesh;
         lineMesh.vertex(0.0,0.0, 10.0);
@@ -1101,6 +1204,7 @@ public:
             int devChan = speakers[i].deviceChannel;
             g.pushMatrix();
             g.translate(speakers[i].vecGraphics());
+
             float peak = 0.0;
             if(!speakers[i].isPhantom){
                 peak = mPeaks[devChan].load();
@@ -1112,12 +1216,20 @@ public:
                 g.color(0.0,1.0,0.0);
             }else if(devChan == 0){
                 g.color(1.0,0.0,0.0);
+            }else if(devChan == 1){
+                g.color(0.0,0.0,1.0);
             }else if(!speakers[i].enabled->get()){
                 g.color(0.05,0.05,0.05);
             }else{
             g.color(1);
             }
             g.draw(mSpeakerMesh);
+
+//            g.texture();
+//            font.tex.bind();
+//            g.draw(fontMesh);
+//            font.tex.unbind();
+
             g.popMatrix();
         }
         //parameterGUI.d
