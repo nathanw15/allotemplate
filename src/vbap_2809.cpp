@@ -104,6 +104,8 @@ ParameterBool decorrelate("decorrelate","",0.0);
 ParameterMenu speakerDensity("speakerDensity","",0,"");
 vector<string> spkDensityMenuNames{"All", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
 
+ParameterBool drawLabels("drawLabels","",1.0);
+
 mutex enabledSpeakersLock;
 
 struct Ramp {
@@ -335,6 +337,7 @@ public:
 
     ParameterBool *enabled;
     std::string oscTag;
+    std::string deviceChannelString;
     float aziInRad;
 
     int delay;
@@ -360,7 +363,10 @@ public:
         gain = ga;
         aziInRad = toRad(az);
 
-        oscTag = "speaker"+ std::to_string(deviceChannel) + "/enabled";
+        deviceChannelString = std::to_string(deviceChannel);
+
+//        oscTag = "speaker"+ std::to_string(deviceChannel) + "/enabled";
+        oscTag = "speaker"+ deviceChannelString + "/enabled";
         enabled = new ParameterBool(oscTag,"",1.0);
         //enabled->setHint("latch",1.f);
 
@@ -427,7 +433,8 @@ void initPanner(){
     //cout <<"panner init" << endl;
 }
 
-class MyApp : public App
+//class MyApp : public App
+struct MyApp : public App
 {
 public:
     Mesh mSpeakerMesh;
@@ -444,8 +451,8 @@ public:
     Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
     float mMaxjump{M_PI};
 
-//    Font font;
-//    Mesh fontMesh;
+    Font font;
+    Mesh fontMesh;
 
     MyApp()
     {
@@ -464,7 +471,7 @@ public:
         }
 
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << speakerDensity;
+        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << speakerDensity << drawLabels;
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
@@ -489,7 +496,7 @@ public:
 //        setMidiPiano.setHint("latch",1.f);
 //        setAllRatesToOne.setHint("latch",1.f);
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << speakerDensity;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << speakerDensity << drawLabels;
 
         setAllPosUpdate.setElements(posUpdateNames);
         setAllSoundFileIdx.setElements(files);
@@ -661,7 +668,6 @@ public:
 //        });
 
         maxDelay.registerChangeCallback([&](float val){
-            //cout << maxDelay.get() << " " << val << endl;
             int delSamps = val*SAMPLE_RATE;
             for(SpeakerV &v:speakers){
                v.setDelay(delSamps);
@@ -895,6 +901,7 @@ public:
         mPeaks = new atomic<float>[highestChannel + 1];
 
         addSphere(mSpeakerMesh, 1.0, 5, 5);
+        mSpeakerMesh.primitive(Mesh::LINES);
         
 //        map<uint32_t, vector<uint32_t>> routingMap = {
 //            {0, {0, 1}, 1, {2, 3}, 2, {4, 5}, 3, {6, 7}, 4, {8, 9}, 5, {10, 11}}};
@@ -937,12 +944,9 @@ public:
         nav().pos(0, 1, 20);
         parameterGUI.init();
 
-//        bool fontLoaded;
-
-//        fontLoaded =font.load("data/VeraMono.ttf", 28, 1024);
-//        cout << "Font loaded: " << fontLoaded << endl;
-//        font.alignCenter();
-//        font.write(fontMesh, "1", 0.2f);
+        font.load("data/VeraMono.ttf", 28, 1024);
+        font.alignCenter();
+        font.write(fontMesh, "1", 0.2f);
 
         //speakerGUI.init();
         //initIMGUI();
@@ -1138,17 +1142,6 @@ public:
         g.blending(true);
         g.blendModeAdd();
 
-
-//        g.color(1.0);
-//        //g.texture();
-//        //g.blendModeTrans();
-//        font.write(fontMesh,"Test",0.2f);
-//        g.texture();
-//        font.tex.bind();
-//        g.draw(fontMesh);
-//        font.tex.unbind();
-
-
         g.pushMatrix();
         Mesh lineMesh;
         lineMesh.vertex(0.0,0.0, 10.0);
@@ -1167,6 +1160,21 @@ public:
             Vec3d pos = ambiSphericalToOGLCart(v->aziInRad,radius);
             g.pushMatrix();
             g.translate(pos);
+
+
+            if(drawLabels.get()){
+                //Draw Source Index
+                g.pushMatrix();
+                g.color(1);
+                g.translate(0.0,0.3,0.0);
+                font.write(fontMesh,std::to_string(v->vsBundle.bundleIndex()).c_str(),0.2f);
+                g.texture();
+                font.tex.bind();
+                g.draw(fontMesh);
+                font.tex.unbind();
+                g.popMatrix();
+            }
+
             g.scale(0.3);
             g.color(0.4,0.4, 0.4, 0.5);
             g.draw(mSpeakerMesh);
@@ -1178,7 +1186,7 @@ public:
 //            if(t%100 == 0){
 //                cout << v->getSamplePlayerPhase() << endl;
 //            }
-            g.translate(v->getSamplePlayerPhase(),v->vsBundle.bundleIndex()*0.25,0.0);
+            g.translate(v->getSamplePlayerPhase(),2.0 + v->vsBundle.bundleIndex()*0.25,0.0);
             g.scale(0.3);
             g.draw(mSpeakerMesh);
             g.popMatrix();
@@ -1205,12 +1213,29 @@ public:
             g.pushMatrix();
             g.translate(speakers[i].vecGraphics());
 
+
+            if(drawLabels.get()){
+                //Draw Speaker Channel
+                g.pushMatrix();
+                g.translate(0.0,0.1,0.0);
+                if(!speakers[i].isPhantom){
+                    font.write(fontMesh,speakers[i].deviceChannelString.c_str(),0.2f);
+                }else{
+                    font.write(fontMesh,"P",0.2f);
+                }
+                g.texture();
+                font.tex.bind();
+                g.draw(fontMesh);
+                font.tex.unbind();
+                g.popMatrix();
+            }
+
             float peak = 0.0;
             if(!speakers[i].isPhantom){
                 peak = mPeaks[devChan].load();
             }
             g.scale(0.04 + peak * 6);
-            g.polygonLine();
+            //g.polygonLine();
 
             if(speakers[i].isPhantom){
                 g.color(0.0,1.0,0.0);
@@ -1234,6 +1259,9 @@ public:
         }
         //parameterGUI.d
         parameterGUI.draw(g);
+
+
+
 //        speakerGUI.draw(g);
 
 //        beginIMGUI();
