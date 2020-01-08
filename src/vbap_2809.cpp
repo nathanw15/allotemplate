@@ -104,6 +104,17 @@ ParameterBool decorrelate("decorrelate","",0.0);
 ParameterMenu speakerDensity("speakerDensity","",0,"");
 vector<string> spkDensityMenuNames{"All", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
 
+ParameterMenu decorrelationMethod("decorrelationMethod","",0,"");
+vector<string> decorMethodMenuNames{"Kendall", "Zotter"};
+ParameterBool configureDecorrelation("configureDecorrelation","",0.0);
+
+Parameter deltaFreq("deltaFreq","",20.0,"", 0.0, 50.0);
+Parameter maxFreqDev("maxFreqDev","",10.0,"", 0.0, 50.0);
+Parameter maxTau("maxTau","",1.0,"", 0.0, 10.0);
+Parameter startPhase("startPhase","",0.0,"", 0.0, 10.0);
+Parameter phaseDev("phaseDev","",0.0,"", 0.0, 10.0);
+Trigger updateDecorrelation("updateDecorrelation","","");
+
 ParameterBool drawLabels("drawLabels","",1.0);
 
 mutex enabledSpeakersLock;
@@ -450,6 +461,8 @@ public:
     
     Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
     float mMaxjump{M_PI};
+    map<uint32_t, vector<uint32_t>> routingMap;
+
 
     Font font;
     Mesh fontMesh;
@@ -470,8 +483,14 @@ public:
             files.push_back(fPath);
         }
 
+//        Parameter deltaFreq("deltaFreq","",20.0,"", 0.0, 50.0);
+//        Parameter maxFreqDev("maxFreqDev","",10.0,"", 0.0, 50.0);
+//        Parameter maxTau("maxTau","",1.0,"", 0.0, 10.0);
+//        Parameter startPhase("startPhase","",0.0,"", 0.0, 10.0);
+//        Parameter phaseDev("phaseDev","",0.0,"", 0.0, 10.0);
+//        Trigger updateDecorrelation("updateDecorrelation","","");
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << speakerDensity << drawLabels;
+        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
@@ -496,13 +515,22 @@ public:
 //        setMidiPiano.setHint("latch",1.f);
 //        setAllRatesToOne.setHint("latch",1.f);
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << speakerDensity << drawLabels;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << decorrelationMethod << speakerDensity << drawLabels;
 
         setAllPosUpdate.setElements(posUpdateNames);
         setAllSoundFileIdx.setElements(files);
 
         speakerDensity.setElements(spkDensityMenuNames);
 
+        decorrelationMethod.setElements(decorMethodMenuNames);
+
+        decorrelationMethod.registerChangeCallback([&](float val){
+            configureDecorrelation.set(1.0);
+        });
+
+        updateDecorrelation.registerChangeCallback([&](float val){
+            configureDecorrelation.set(1.0);
+        });
         setMorphTime.registerChangeCallback([&](float val){
             srcPresets.setMorphTime(val);
 
@@ -909,7 +937,7 @@ public:
         //5 key values for now, one for each source
 //        map<uint32_t, vector<uint32_t>> routingMap = {
 //            {0, {0, 1}}, {1, {2, 3}}, {2, {4, 5}}, {3, {6, 7}}, {4, {8, 9}}};
-        map<uint32_t, vector<uint32_t>> routingMap;
+//        map<uint32_t, vector<uint32_t>> routingMap;
 
         uint32_t key = 0;
         uint32_t val = 0;
@@ -974,6 +1002,20 @@ public:
             //Try to copy audio for each source into decorr. input buffer here
             
             if(decorrelate.get() > 0.5){
+
+                if(configureDecorrelation.get() > 0.5){
+                    configureDecorrelation.set(0.0);
+                    cout << decorrelationMethod.get() << endl;
+                    if(decorrelationMethod.get() < 0.5){
+                        //Kendall Method
+                        decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
+                                                true, 1000, mMaxjump);
+                    }else {
+                        //Zotter Method
+                        decorrelation.configureDeterministic(audioIO().framesPerBuffer(), routingMap, true, 1000, deltaFreq, maxFreqDev, maxTau, startPhase, phaseDev);
+                    }
+                }
+
                 for(VirtualSource *v: sources){
                     if(v->enabled){
                         //                        enabledSources += 1.0f;
