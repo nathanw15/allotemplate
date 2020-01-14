@@ -11,6 +11,7 @@
 #include "al/ui/al_Parameter.hpp"
 #include "al/ui/al_ParameterServer.hpp"
 #include "Gamma/SamplePlayer.h"
+#include "Gamma/Noise.h"
 #include "al/ui/al_ControlGUI.hpp"
 #include "al/ui/al_HtmlInterfaceServer.hpp"
 
@@ -219,6 +220,7 @@ public:
     Parameter sourceGain{"sourceGain","",0.5,"",0.0,1.0};
     Parameter aziInRad{"aziInRad","",2.9,"",-1.0*M_PI,M_PI};
     gam::SamplePlayer<> samplePlayer;
+      gam::NoisePink<> noise;
     //int sound = 0;
     //Parameter fileIdx{"fileIdx","",2.0,"",0.0,3.0};
     ParameterBundle vsBundle{"vsBundle"};
@@ -233,10 +235,13 @@ public:
         Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
         Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
 
+        ParameterMenu sourceSound{"sourceSound","",0,""};
+
     int previousSamp = 0;
 
     VirtualSource(){
 
+        sourceSound.setElements({"SoundFile","Noise"});
         positionUpdate.setElements(posUpdateNames);
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
@@ -293,7 +298,7 @@ public:
 
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq;
+        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << sourceSound <<  fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq;
 
         srcPresets << vsBundle;
     }
@@ -316,23 +321,47 @@ public:
             break;
         }
     }
-    
-    void getBuffer(unsigned int sampleNumber, float *buffer){
-        updatePosition(sampleNumber); // This can be moved
-        for(int i = 0; i < BLOCK_SIZE; i++){
+
+    float getSampleForSource(){
+        switch ((int)sourceSound.get() ) {
+        case 0:
             if(samplePlayer.done()){
                 samplePlayer.reset();
             }
-            buffer[i] = sourceGain.get() * samplePlayer();
+            return sourceGain.get() * samplePlayer();
+            break;
+
+        case 1:
+            return sourceGain.get() * noise();
+            break;
+        default:
+            return 0.0;
+            break;
+        }
+//        if(samplePlayer.done()){
+//            samplePlayer.reset();
+//        }
+//        return sourceGain.get() * samplePlayer();
+    }
+    
+    void getBuffer(float *buffer){
+        //updatePosition(sampleNumber); // This can be moved
+        for(int i = 0; i < BLOCK_SIZE; i++){
+//            if(samplePlayer.done()){
+//                samplePlayer.reset();
+//            }
+//            buffer[i] = sourceGain.get() * samplePlayer();
+            buffer[i] = getSampleForSource();
         }
     }
 
-    float getSample(unsigned int sampleNumber){
-        updatePosition(sampleNumber); // This can be moved
-        if(samplePlayer.done()){
-            samplePlayer.reset();
-        }
-        return sourceGain.get() * samplePlayer();
+    float getSample(){
+        //updatePosition(sampleNumber); // This can be moved
+//        if(samplePlayer.done()){
+//            samplePlayer.reset();
+//        }
+//        return sourceGain.get() * samplePlayer();
+        return getSampleForSource();
     }
 
     float getSamplePlayerPhase(){
@@ -459,10 +488,13 @@ public:
 //    ControlGUI speakerGUI;
     ParameterBundle xsetAllBundle{"xsetAllBundle"};
     
+
+    //Size of the decorrelation filter. See Kendall p. 75
+    //How does this translate to the duration of the impulse response?
     Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
+
     float mMaxjump{M_PI};
     map<uint32_t, vector<uint32_t>> routingMap;
-
 
     Font font;
     Mesh fontMesh;
@@ -483,12 +515,6 @@ public:
             files.push_back(fPath);
         }
 
-//        Parameter deltaFreq("deltaFreq","",20.0,"", 0.0, 50.0);
-//        Parameter maxFreqDev("maxFreqDev","",10.0,"", 0.0, 50.0);
-//        Parameter maxTau("maxTau","",1.0,"", 0.0, 10.0);
-//        Parameter startPhase("startPhase","",0.0,"", 0.0, 10.0);
-//        Parameter phaseDev("phaseDev","",0.0,"", 0.0, 10.0);
-//        Trigger updateDecorrelation("updateDecorrelation","","");
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
         parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
         parameterGUI << srcPresets;
@@ -507,14 +533,6 @@ public:
 
         //parameterGUI << presets;
 
-//        soundOn.setHint("latch", 1.f);
-//        sampleWise.setHint("latch", 1.f);
-//        useDelay.setHint("latch",1.f);
-//        setAllEnabled.setHint("latch",1.f);
-//        setPiano.setHint("latch",1.f);
-//        setMidiPiano.setHint("latch",1.f);
-//        setAllRatesToOne.setHint("latch",1.f);
-
         parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << decorrelationMethod << speakerDensity << drawLabels;
 
         setAllPosUpdate.setElements(posUpdateNames);
@@ -531,15 +549,14 @@ public:
         updateDecorrelation.registerChangeCallback([&](float val){
             configureDecorrelation.set(1.0);
         });
+
         setMorphTime.registerChangeCallback([&](float val){
             srcPresets.setMorphTime(val);
-
         });
 
         recallPreset.registerChangeCallback([&](float val){
             srcPresets.recallPreset(val);
         });
-
 
         setPlayerPhase.registerChangeCallback([&](float val){
             VirtualSource *firstSource = sources[0];
@@ -725,8 +742,6 @@ public:
                     }
                 }
             }
-
-
         });
 
 
@@ -1021,10 +1036,11 @@ public:
                         //                        enabledSources += 1.0f;
                         auto inBuffer = decorrelation.getInputBuffer(v->vsBundle.bundleIndex());
                         for(int i = 0; i < BLOCK_SIZE; i++){
-                            if(v->samplePlayer.done()){
-                                v->samplePlayer.reset();
-                            }
-                            inBuffer[i] = v->samplePlayer();
+//                            if(v->samplePlayer.done()){
+//                                v->samplePlayer.reset();
+//                            }
+//                            inBuffer[i] = v->samplePlayer();
+                            inBuffer[i] = v->getSample();
                         }
                     }
                     break; // only source 0 for now
@@ -1047,11 +1063,15 @@ public:
 
                             if(speakerChan1 != -1){
                                 float sample1 = decorrelation.getOutputBuffer(speakerChan1)[io.frame()];
-                                setOutput(io,speakerChan1,io.frame(),sample1 * v->sourceGain.get() * gains[0]);
+//                                setOutput(io,speakerChan1,io.frame(),sample1 * v->sourceGain.get() * gains[0]);
+                                setOutput(io,speakerChan1,io.frame(),sample1 * gains[0]);
+
                             }
                             if(speakerChan2 != -1){
                                 float sample2 = decorrelation.getOutputBuffer(speakerChan2)[io.frame()];
-                                setOutput(io,speakerChan2,io.frame(),sample2 * v->sourceGain.get() * gains[1]);
+//                                setOutput(io,speakerChan2,io.frame(),sample2 * v->sourceGain.get() * gains[1]);
+                                setOutput(io,speakerChan2,io.frame(),sample2 * gains[1]);
+
                             }
                         }
                         break; // only do for source 0 for now;
@@ -1062,7 +1082,8 @@ public:
                     for(VirtualSource *v: sources){
                         if(v->enabled){
                             enabledSources += 1.0f;
-                            float sample = v->getSample(t);
+                            v->updatePosition(t);
+                            float sample = v->getSample();
                             if(useDelay.get() == 1.f){
                                 renderSampleDelaySpeakers(io,v->aziInRad.get(),sample);
                             } else {
@@ -1097,13 +1118,13 @@ public:
                         if(speakerChan1 != -1){
                             auto outputBuffer1 = decorrelation.getOutputBuffer(speakerChan1);
                             for(int i = 0; i < io.framesPerBuffer(); i++){
-                                setOutput(io,speakerChan1,i,outputBuffer1[i] * v->sourceGain.get() * gains[0]);
+                                setOutput(io,speakerChan1,i,outputBuffer1[i] * gains[0]);
                             }
                         }
                         if(speakerChan2 != -1){
                             auto outputBuffer2 = decorrelation.getOutputBuffer(speakerChan2);
                             for(int i = 0; i < io.framesPerBuffer(); i++){
-                                setOutput(io,speakerChan2,i,outputBuffer2[i] * v->sourceGain.get() * gains[1]);
+                                setOutput(io,speakerChan2,i,outputBuffer2[i] * gains[1]);
                             }
                         }
                     }
@@ -1115,7 +1136,8 @@ public:
                 for(VirtualSource *v: sources){
                     if(v->enabled){
                         enabledSources += 1.0f;
-                        v->getBuffer(t,srcBuffer);
+                        v->updatePosition(t);
+                        v->getBuffer(srcBuffer);
                         if(useDelay.get() == 1.f){
                             renderBufferDelaySpeakers(io,v->aziInRad.get(), srcBuffer);
                         }else{
