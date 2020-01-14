@@ -1014,13 +1014,11 @@ public:
 
         if(soundOn.get() > 0.5){
             
-            //Try to copy audio for each source into decorr. input buffer here
-            
             if(decorrelate.get() > 0.5){
 
+                //Only reconfigure if method has changed
                 if(configureDecorrelation.get() > 0.5){
                     configureDecorrelation.set(0.0);
-                    cout << decorrelationMethod.get() << endl;
                     if(decorrelationMethod.get() < 0.5){
                         //Kendall Method
                         decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
@@ -1033,13 +1031,8 @@ public:
 
                 for(VirtualSource *v: sources){
                     if(v->enabled){
-                        //                        enabledSources += 1.0f;
                         auto inBuffer = decorrelation.getInputBuffer(v->vsBundle.bundleIndex());
                         for(int i = 0; i < BLOCK_SIZE; i++){
-//                            if(v->samplePlayer.done()){
-//                                v->samplePlayer.reset();
-//                            }
-//                            inBuffer[i] = v->samplePlayer();
                             inBuffer[i] = v->getSample();
                         }
                     }
@@ -1053,7 +1046,52 @@ public:
 
                 ++t;
 
-                if(decorrelate.get() > 0.5 && sampleWise.get() == 1.f){
+                if(sampleWise.get() == 1.f){
+                    if(decorrelate.get() > 0.5){
+                        for(VirtualSource *v: sources){
+                            if(v->enabled){
+                                enabledSources += 1.0f;
+                                v->updatePosition(t);
+                                int speakerChan1, speakerChan2;
+                                Vec3d gains = calcGains(io,v->aziInRad.get(), speakerChan1, speakerChan2);
+
+                                if(speakerChan1 != -1){
+                                    float sample1 = decorrelation.getOutputBuffer(speakerChan1)[io.frame()];
+                                    //                                setOutput(io,speakerChan1,io.frame(),sample1 * v->sourceGain.get() * gains[0]);
+                                    setOutput(io,speakerChan1,io.frame(),sample1 * gains[0]);
+
+                                }
+                                if(speakerChan2 != -1){
+                                    float sample2 = decorrelation.getOutputBuffer(speakerChan2)[io.frame()];
+                                    //                                setOutput(io,speakerChan2,io.frame(),sample2 * v->sourceGain.get() * gains[1]);
+                                    setOutput(io,speakerChan2,io.frame(),sample2 * gains[1]);
+
+                                }
+                            }
+                            break; // only do for source 0 for now;
+                        }
+
+                    } else{
+
+                        for(VirtualSource *v: sources){
+                            if(v->enabled){
+                                enabledSources += 1.0f;
+                                v->updatePosition(t);
+                                float sample = v->getSample();
+                                if(useDelay.get() == 1.f){
+                                    renderSampleDelaySpeakers(io,v->aziInRad.get(),sample);
+                                } else {
+                                    renderSample(io,v->aziInRad.get(), sample);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            if(sampleWise.get() == 0.f){
+                if(decorrelate.get() > 0.5){
                     for(VirtualSource *v: sources){
                         if(v->enabled){
                             enabledSources += 1.0f;
@@ -1062,86 +1100,33 @@ public:
                             Vec3d gains = calcGains(io,v->aziInRad.get(), speakerChan1, speakerChan2);
 
                             if(speakerChan1 != -1){
-                                float sample1 = decorrelation.getOutputBuffer(speakerChan1)[io.frame()];
-//                                setOutput(io,speakerChan1,io.frame(),sample1 * v->sourceGain.get() * gains[0]);
-                                setOutput(io,speakerChan1,io.frame(),sample1 * gains[0]);
-
+                                auto outputBuffer1 = decorrelation.getOutputBuffer(speakerChan1);
+                                for(int i = 0; i < io.framesPerBuffer(); i++){
+                                    setOutput(io,speakerChan1,i,outputBuffer1[i] * gains[0]);
+                                }
                             }
                             if(speakerChan2 != -1){
-                                float sample2 = decorrelation.getOutputBuffer(speakerChan2)[io.frame()];
-//                                setOutput(io,speakerChan2,io.frame(),sample2 * v->sourceGain.get() * gains[1]);
-                                setOutput(io,speakerChan2,io.frame(),sample2 * gains[1]);
-
+                                auto outputBuffer2 = decorrelation.getOutputBuffer(speakerChan2);
+                                for(int i = 0; i < io.framesPerBuffer(); i++){
+                                    setOutput(io,speakerChan2,i,outputBuffer2[i] * gains[1]);
+                                }
                             }
                         }
                         break; // only do for source 0 for now;
                     }
 
-                } else if(sampleWise.get() == 1.f){
+                } else{
 
                     for(VirtualSource *v: sources){
                         if(v->enabled){
                             enabledSources += 1.0f;
                             v->updatePosition(t);
-                            float sample = v->getSample();
+                            v->getBuffer(srcBuffer);
                             if(useDelay.get() == 1.f){
-                                renderSampleDelaySpeakers(io,v->aziInRad.get(),sample);
-                            } else {
-                                renderSample(io,v->aziInRad.get(), sample);
+                                renderBufferDelaySpeakers(io,v->aziInRad.get(), srcBuffer);
+                            }else{
+                                renderBuffer(io,v->aziInRad.get(), srcBuffer);
                             }
-                        }
-                    }
-                }
-            }
-
-//            bufferCounter++;
-//            if(aBSpeakers.get() == 1.0f){ //Turns Combine All channels on and off
-//                if(bufferCounter*BLOCK_SIZE > SAMPLE_RATE * speakerToggle){
-//                    bufferCounter = 0;
-//                    if(combineAllChannels.get() == 1.0f){
-//                        combineAllChannels.set(0.0f);
-//                    }else {
-//                        combineAllChannels.set(1.0f);
-//                    }
-//                }
-//            }
-
-
-            if(decorrelate.get() > 0.5 && sampleWise.get() == 0.f){
-                for(VirtualSource *v: sources){
-                    if(v->enabled){
-                        enabledSources += 1.0f;
-                        v->updatePosition(t);
-                        int speakerChan1, speakerChan2;
-                        Vec3d gains = calcGains(io,v->aziInRad.get(), speakerChan1, speakerChan2);
-
-                        if(speakerChan1 != -1){
-                            auto outputBuffer1 = decorrelation.getOutputBuffer(speakerChan1);
-                            for(int i = 0; i < io.framesPerBuffer(); i++){
-                                setOutput(io,speakerChan1,i,outputBuffer1[i] * gains[0]);
-                            }
-                        }
-                        if(speakerChan2 != -1){
-                            auto outputBuffer2 = decorrelation.getOutputBuffer(speakerChan2);
-                            for(int i = 0; i < io.framesPerBuffer(); i++){
-                                setOutput(io,speakerChan2,i,outputBuffer2[i] * gains[1]);
-                            }
-                        }
-                    }
-                    break; // only do for source 0 for now;
-                }
-
-            } else if(sampleWise.get() == 0.f){
-
-                for(VirtualSource *v: sources){
-                    if(v->enabled){
-                        enabledSources += 1.0f;
-                        v->updatePosition(t);
-                        v->getBuffer(srcBuffer);
-                        if(useDelay.get() == 1.f){
-                            renderBufferDelaySpeakers(io,v->aziInRad.get(), srcBuffer);
-                        }else{
-                            renderBuffer(io,v->aziInRad.get(), srcBuffer);
                         }
                     }
                 }
@@ -1154,7 +1139,7 @@ public:
                 }
                 //combine all the channels into one buffer
                 for (int speaker = 0; speaker < speakers.size(); speaker++) {
-                    if(!speakers[speaker].isPhantom){
+                    if(!speakers[speaker].isPhantom && speakers[speaker].enabled->get()){
                         int deviceChannel = speakers[speaker].deviceChannel;
 
                         for (int i = 0; i < io.framesPerBuffer(); i++) {
@@ -1167,7 +1152,7 @@ public:
 
                 //copy combined buffer to all channels
                 for (int speaker = 0; speaker < speakers.size(); speaker++) {
-                    if(!speakers[speaker].isPhantom){
+                    if(!speakers[speaker].isPhantom && speakers[speaker].enabled->get()){
                         int deviceChannel = speakers[speaker].deviceChannel;
 
                         for (int i = 0; i < io.framesPerBuffer(); i++) {
