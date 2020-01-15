@@ -221,6 +221,8 @@ public:
     Parameter aziInRad{"aziInRad","",2.9,"",-1.0*M_PI,M_PI};
     gam::SamplePlayer<> samplePlayer;
       gam::NoisePink<> noise;
+      gam::Sine<> osc;
+      Parameter oscFreq{"oscFreq","",440.0,"",0.0,2000.0f};
     //int sound = 0;
     //Parameter fileIdx{"fileIdx","",2.0,"",0.0,3.0};
     ParameterBundle vsBundle{"vsBundle"};
@@ -241,7 +243,9 @@ public:
 
     VirtualSource(){
 
-        sourceSound.setElements({"SoundFile","Noise"});
+        osc.freq(oscFreq.get());
+
+        sourceSound.setElements({"SoundFile","Noise","Sine"});
         positionUpdate.setElements(posUpdateNames);
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
@@ -252,6 +256,10 @@ public:
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
         sourceRamp.rampDuration = rampDuration.get();
+
+        oscFreq.registerChangeCallback([&](float val){
+           osc.freq(val);
+        });
 
         aziInRad.setProcessingCallback([&](float val){
             wrapValues(val);
@@ -298,7 +306,7 @@ public:
 
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << sourceSound <<  fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq;
+        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << sourceSound <<  fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq << oscFreq;
 
         srcPresets << vsBundle;
     }
@@ -334,6 +342,8 @@ public:
         case 1:
             return sourceGain.get() * noise();
             break;
+        case 2:
+            return sourceGain.get() * osc() * 0.2;
         default:
             return 0.0;
             break;
