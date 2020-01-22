@@ -47,7 +47,7 @@ float radius = 5.0;
 //Parameter sourceSound("sourceSound","",0.0,"",0.0,3.0);
 //Parameter soundFileIdx("soundFileIdx","",0.0,"",0.0,3.0);
 
-ParameterBool sampleWise("sampleWise","",0.0);
+ParameterBool sampleWise("sampleWise","",1.0);
 ParameterBool useDelay("useDelay","", 0.0);
 
 Parameter masterGain("masterGain","",0.5,"",0.0,1.0);
@@ -126,14 +126,6 @@ struct Ramp {
     bool done = false;
     bool running = false;
     bool trigger = false;
-
-   // ParameterBundle rampBundle{"rampBundle"};
-//    ParameterBool triggerRamp{"triggerRamp","",0.0};
-    //Trigger triggerRamp{"triggerRamp","",""};
-//    Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
-//    Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
-//    Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
-
     float rampStartAzimuth = 0.0f;
     float rampEndAzimuth = 0.0f;
     float rampDuration = 0.0f;
@@ -195,7 +187,6 @@ struct Ramp {
 
             return val;
         } else {
-//            return rampEndAzimuth.get();
             return rampEndAzimuth;
         }
     }
@@ -220,9 +211,9 @@ public:
     Parameter sourceGain{"sourceGain","",0.5,"",0.0,1.0};
     Parameter aziInRad{"aziInRad","",2.9,"",-1.0*M_PI,M_PI};
     gam::SamplePlayer<> samplePlayer;
-      gam::NoisePink<> noise;
-      gam::Sine<> osc;
-      Parameter oscFreq{"oscFreq","",440.0,"",0.0,2000.0f};
+    gam::NoisePink<> noise;
+    gam::Sine<> osc;
+    Parameter oscFreq{"oscFreq","",440.0,"",0.0,2000.0f};
     //int sound = 0;
     //Parameter fileIdx{"fileIdx","",2.0,"",0.0,3.0};
     ParameterBundle vsBundle{"vsBundle"};
@@ -233,25 +224,31 @@ public:
     Ramp sourceRamp;
     Trigger triggerRamp{"triggerRamp","",""};
 
-        Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
-        Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
-        Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
-
-        ParameterMenu sourceSound{"sourceSound","",0,""};
+    Parameter rampStartAzimuth{"rampStartAzimuth","",-0.5,"",-1.0*M_PI,M_PI};
+    Parameter rampEndAzimuth{"rampEndAzimuth","",0.5,"",-1.0*M_PI,M_PI};
+    Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
+    ParameterMenu sourceSound{"sourceSound","",0,""};
 
     int previousSamp = 0;
 
+    Parameter spkSkirtWidth{"spkSkirtWidth","", M_PI/8.0f, "", 0.0f,M_PI};
+    ParameterMenu panMethod{"panMethod","",0,""};
+
+    ParameterBundle rampBundle{"rampBundle"};
+
     VirtualSource(){
+
+
 
         osc.freq(oscFreq.get());
 
+        panMethod.setElements({"VBAP","SpeakerSkirt"});
         sourceSound.setElements({"SoundFile","Noise","Sine"});
         positionUpdate.setElements(posUpdateNames);
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
         samplePlayer.rate(samplePlayerRate.get());
-
 
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
@@ -304,9 +301,10 @@ public:
                 sourceRamp.rampDuration = val;
         });
 
-
+        //rampBundle.
+        //rampBundle << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration;
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << sourceSound <<  fileMenu << samplePlayerRate << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration << angularFreq << oscFreq;
+        vsBundle << enabled << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << oscFreq  << spkSkirtWidth ;
 
         srcPresets << vsBundle;
     }
@@ -348,29 +346,15 @@ public:
             return 0.0;
             break;
         }
-//        if(samplePlayer.done()){
-//            samplePlayer.reset();
-//        }
-//        return sourceGain.get() * samplePlayer();
     }
     
     void getBuffer(float *buffer){
-        //updatePosition(sampleNumber); // This can be moved
         for(int i = 0; i < BLOCK_SIZE; i++){
-//            if(samplePlayer.done()){
-//                samplePlayer.reset();
-//            }
-//            buffer[i] = sourceGain.get() * samplePlayer();
             buffer[i] = getSampleForSource();
         }
     }
 
     float getSample(){
-        //updatePosition(sampleNumber); // This can be moved
-//        if(samplePlayer.done()){
-//            samplePlayer.reset();
-//        }
-//        return sourceGain.get() * samplePlayer();
         return getSampleForSource();
     }
 
@@ -396,6 +380,9 @@ public:
     int readPos,writePos;
 
     bool isPhantom = false;
+
+    Parameter spkSkirtWidth{"spkSkirtWidth","", M_PI/8.0f, "", 0.0f,M_PI};
+
 
     SpeakerV(int chan, float az=0.f, float el=0.f, int gr=0, float rad=1.f, float ga=1.f, int del = 0){
         delay = del;
@@ -526,7 +513,10 @@ public:
         }
 
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
-        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
+//        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
+
+        parameterGUI << soundOn << masterGain << resetSamples << sampleWise  << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
+
         parameterGUI << srcPresets;
 
         xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
@@ -540,6 +530,8 @@ public:
 
             parameterServer() << newVS->vsBundle;
         }
+
+        //parameterGUI.
 
         //parameterGUI << presets;
 
@@ -849,6 +841,31 @@ public:
         return gains;
     }
 
+//    float calcSpeakerSkirtGains(VirtualSource  *vs, SpeakerV speaker){
+    float calcSpeakerSkirtGains(float srcAzi, float spkSkirtWidth, float skirtWidthMax, float spkAzi){
+        float gain = 0.0f;
+
+
+        float angleDiff = srcAzi - spkAzi;
+        angleDiff += (angleDiff > M_PI) ? -1.0f*M_2PI : (angleDiff < -1.0f*M_PI) ? M_2PI : 0.0f;
+        float distanceToSpeaker = fabs(angleDiff);
+//        float distanceToSpeaker = fabs(vs->aziInRad - speaker.aziInRad);
+//                float distanceToSpeaker = fabs(srcAzi - spkAzi);
+//        if(distanceToSpeaker > M_PI){
+//            distanceToSpeaker = fabs(spkAzi-srcAzi);
+//        }
+
+        if(distanceToSpeaker <= spkSkirtWidth/2.0f){
+            float p = ((2.0f*distanceToSpeaker)/(spkSkirtWidth/2.0f))-1.0f;
+            gain = cos((M_PI*(p+1))/4.0f);
+            return gain;
+        }else{
+            return 0.0f;
+        }
+
+
+    }
+
     void setOutput(AudioIOData &io, int channel, int frame, float sample){
         if(channel != -1){
             io.out(channel,frame) += sample*masterGain.get();
@@ -901,11 +918,51 @@ public:
         }
     }
 
-    void renderSample(AudioIOData &io, const float &srcAzi, const float &sample){
-        int speakerChan1, speakerChan2;
-        Vec3d gains = calcGains(io,srcAzi, speakerChan1, speakerChan2);
-        setOutput(io,speakerChan1,io.frame(),sample * gains[0]);
-        setOutput(io,speakerChan2,io.frame(),sample * gains[1]);
+//    void renderSample(AudioIOData &io, const float &srcAzi, const float &sample, int pMethod ){
+    void renderSample(AudioIOData &io, VirtualSource  *vs){
+
+        if(vs->panMethod.get() == 0){ // VBAP
+            int speakerChan1, speakerChan2;
+            Vec3d gains = calcGains(io,vs->aziInRad, speakerChan1, speakerChan2);
+            float sampleOut1, sampleOut2;
+            if(decorrelate.get() > 0.5f){
+
+                if(speakerChan1 != -1){
+                     sampleOut1 = decorrelation.getOutputBuffer(speakerChan1)[io.frame()];
+                    setOutput(io,speakerChan1,io.frame(),sampleOut1 * gains[0]);
+                }
+                if(speakerChan2 != -1){
+                     sampleOut2 = decorrelation.getOutputBuffer(speakerChan2)[io.frame()];
+                    setOutput(io,speakerChan2,io.frame(),sampleOut2 * gains[1]);
+                }
+            } else{ // don't decorrelate
+                float sample = vs->getSample();
+                setOutput(io,speakerChan1,io.frame(),sample * gains[0]);
+                setOutput(io,speakerChan2,io.frame(),sample * gains[1]);
+            }
+
+
+        }else if(vs->panMethod.get()==1){ //Skirt
+
+            float sample = 0.0f;
+            if(decorrelate.get() < 0.5f){
+                 sample = vs->getSample();
+            }
+            for (int i = 0; i < speakers.size(); i++){
+                if(!speakers[i].isPhantom && speakers[i].enabled->get()){
+                    int speakerChannel = speakers[i].deviceChannel;
+                    float gain = calcSpeakerSkirtGains(vs->aziInRad,vs->spkSkirtWidth,vs->spkSkirtWidth.max(),speakers[i].aziInRad);
+
+                    if(decorrelate.get() > 0.5f){
+                         sample = decorrelation.getOutputBuffer(speakerChannel)[io.frame()];
+                        setOutput(io,speakerChannel,io.frame(),sample * gain);
+
+                    }else{
+                        setOutput(io,speakerChannel,io.frame(),sample * gain);
+                    }
+                }
+            }
+        }
     }
 
     void onInit() override {
@@ -1057,45 +1114,16 @@ public:
                 ++t;
 
                 if(sampleWise.get() == 1.f){
-                    if(decorrelate.get() > 0.5){
                         for(VirtualSource *v: sources){
                             if(v->enabled){
                                 enabledSources += 1.0f;
                                 v->updatePosition(t);
-                                int speakerChan1, speakerChan2;
-                                Vec3d gains = calcGains(io,v->aziInRad.get(), speakerChan1, speakerChan2);
-
-                                if(speakerChan1 != -1){
-                                    float sample1 = decorrelation.getOutputBuffer(speakerChan1)[io.frame()];
-                                    //                                setOutput(io,speakerChan1,io.frame(),sample1 * v->sourceGain.get() * gains[0]);
-                                    setOutput(io,speakerChan1,io.frame(),sample1 * gains[0]);
-
-                                }
-                                if(speakerChan2 != -1){
-                                    float sample2 = decorrelation.getOutputBuffer(speakerChan2)[io.frame()];
-                                    //                                setOutput(io,speakerChan2,io.frame(),sample2 * v->sourceGain.get() * gains[1]);
-                                    setOutput(io,speakerChan2,io.frame(),sample2 * gains[1]);
-
-                                }
+                                renderSample(io,v);
                             }
-                            break; // only do for source 0 for now;
-                        }
-
-                    } else{
-
-                        for(VirtualSource *v: sources){
-                            if(v->enabled){
-                                enabledSources += 1.0f;
-                                v->updatePosition(t);
-                                float sample = v->getSample();
-                                if(useDelay.get() == 1.f){
-                                    renderSampleDelaySpeakers(io,v->aziInRad.get(),sample);
-                                } else {
-                                    renderSample(io,v->aziInRad.get(), sample);
-                                }
+                            if(decorrelate.get() > 0.5f){
+                                break; // only do for source 0 for now;
                             }
                         }
-                    }
                 }
             }
 
@@ -1316,7 +1344,7 @@ public:
 
             g.popMatrix();
         }
-        //parameterGUI.d
+        //parameterGUI.manageImGUI();
         parameterGUI.draw(g);
 
 
