@@ -218,7 +218,7 @@ public:
     //Parameter fileIdx{"fileIdx","",2.0,"",0.0,3.0};
     ParameterBundle vsBundle{"vsBundle"};
     float buffer[BLOCK_SIZE];
-    Parameter angularFreq {"angularFreq","",1.f,"",-300.f,300.f};
+    Parameter angularFreq {"angularFreq","",1.f,"",-1000.f,1000.f};
     Parameter samplePlayerRate {"samplePlayerRate","",1.f,"",1.f,1.5f};
     ParameterMenu fileMenu{"fileMenu","",0,""};
     Ramp sourceRamp;
