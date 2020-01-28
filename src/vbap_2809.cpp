@@ -56,6 +56,8 @@ vector<string> files;//{"count.wav","lowBoys.wav","midiPiano.wav","pianoA.wav","
 
 vector<string> posUpdateNames{"off", "trajectory", "moving"};
 
+vector<string> panningMethodNames{"VBAP","SpeakerSkirt","Snap to Source Width", "Snap To Nearest Speaker"};
+
 Parameter maxDelay("maxDelay","",0.0,"",0.0,1.0);
 
 //ParameterBool resetSamples("resetSamples","",0.0);
@@ -64,6 +66,7 @@ Trigger resetSamples("resetSamples","","");
 ParameterMenu setAllPosUpdate("setAllPosUpdate","",0,"");
 ParameterMenu setAllSoundFileIdx("setAllSoundFileIdx","",0,"");
 ParameterBool setAllEnabled("setAllEnabled","",0.0);
+ParameterMenu setAllPanMethod("setAllPanMethod","",0,"");
 
 //ParameterBool setPiano("setPiano","",0.0);
 //ParameterBool setMidiPiano("setMidiPiano","",0.0);
@@ -246,7 +249,7 @@ public:
 
         osc.freq(oscFreq.get());
 
-        panMethod.setElements({"VBAP","SpeakerSkirt","Snap to Source Width", "Snap To Nearest Speaker"});
+        panMethod.setElements(panningMethodNames);
         sourceSound.setElements({"SoundFile","Noise","Sine"});
         positionUpdate.setElements(posUpdateNames);
         fileMenu.setElements(files);
@@ -486,6 +489,8 @@ public:
     ControlGUI parameterGUI;
 //    ControlGUI speakerGUI;
     ParameterBundle xsetAllBundle{"xsetAllBundle"};
+
+
     
 
     //Size of the decorrelation filter. See Kendall p. 75
@@ -521,7 +526,7 @@ public:
 
         parameterGUI << srcPresets;
 
-        xsetAllBundle << setAllEnabled << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
+        xsetAllBundle << setAllEnabled << setAllPanMethod << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
         parameterGUI << xsetAllBundle;
 
         for(int i = 0; i < NUM_SOURCES; i++){
@@ -539,6 +544,7 @@ public:
 
         parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << decorrelate << decorrelationMethod << speakerDensity << drawLabels;
 
+        setAllPanMethod.setElements(panningMethodNames);
         setAllPosUpdate.setElements(posUpdateNames);
         setAllSoundFileIdx.setElements(files);
 
@@ -610,6 +616,12 @@ public:
         setAllEnabled.registerChangeCallback([&](float val){
             for(VirtualSource *v: sources){
                 v->enabled.set(val);
+            }
+        });
+
+        setAllPanMethod.registerChangeCallback([&](float val){
+            for(VirtualSource *v: sources){
+                v->panMethod.set(val);
             }
         });
         
