@@ -41,12 +41,6 @@ using namespace std;
 
 float radius = 5.0;
 
-//ParameterBool aBSpeakers("aBSpeakers","",0.0);
-//float speakerToggle = 5.0f; //Number of seconds
-
-//Parameter sourceSound("sourceSound","",0.0,"",0.0,3.0);
-//Parameter soundFileIdx("soundFileIdx","",0.0,"",0.0,3.0);
-
 ParameterBool sampleWise("sampleWise","",1.0);
 ParameterBool useDelay("useDelay","", 0.0);
 
@@ -223,7 +217,10 @@ public:
     //Parameter fileIdx{"fileIdx","",2.0,"",0.0,3.0};
     ParameterBundle vsBundle{"vsBundle"};
     float buffer[BLOCK_SIZE];
-    Parameter angularFreq {"angularFreq","",1.f,"",-1000.f,1000.f};
+//    Parameter angularFreq {"angularFreq","",1.f,"",-1000.f,1000.f};
+    Parameter angularFreq {"angularFreq"};//Radians per second
+    Parameter angFreqCycles {"angFreqCycles", "",1.f,"",-1000.f,1000.f};
+
     Parameter samplePlayerRate {"samplePlayerRate","",1.f,"",1.f,1.5f};
     ParameterMenu fileMenu{"fileMenu","",0,""};
     Ramp sourceRamp;
@@ -245,6 +242,8 @@ public:
 
 
 
+        angularFreq.set(angFreqCycles.get()*M_2PI);
+
         osc.freq(oscFreq.get());
 
         panMethod.setElements({"VBAP","SpeakerSkirt","Snap to Source Width", "Snap To Nearest Speaker"});
@@ -258,6 +257,11 @@ public:
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
         sourceRamp.rampDuration = rampDuration.get();
+
+        angFreqCycles.registerChangeCallback([&](float val){
+            angularFreq.set(val*M_2PI);
+
+        });
 
         oscFreq.registerChangeCallback([&](float val){
            osc.freq(val);
@@ -309,7 +313,7 @@ public:
         //rampBundle.
         //rampBundle << triggerRamp << rampStartAzimuth << rampEndAzimuth << rampDuration;
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << oscFreq  << sourceWidth ;
+        vsBundle << enabled << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << sourceWidth ;
 
         srcPresets << vsBundle;
     }
@@ -333,7 +337,7 @@ public:
         }
     }
 
-    float getSampleForSource(){
+    float getSample(){
         switch ((int)sourceSound.get() ) {
         case 0:
             if(samplePlayer.done()){
@@ -355,13 +359,13 @@ public:
     
     void getBuffer(float *buffer){
         for(int i = 0; i < BLOCK_SIZE; i++){
-            buffer[i] = getSampleForSource();
+            buffer[i] = getSample();
         }
     }
 
-    float getSample(){
-        return getSampleForSource();
-    }
+//    float getSample(){
+//        return getSampleForSource();
+//    }
 
     float getSamplePlayerPhase(){
         return samplePlayer.pos()/samplePlayer.frames();
@@ -386,8 +390,7 @@ public:
 
     bool isPhantom = false;
 
-    Parameter spkSkirtWidth{"spkSkirtWidth","", M_PI/8.0f, "", 0.0f,M_PI};
-
+    //Parameter spkSkirtWidth{"spkSkirtWidth","", M_PI/8.0f, "", 0.0f,M_PI};
 
     SpeakerV(int chan, float az=0.f, float el=0.f, int gr=0, float rad=1.f, float ga=1.f, int del = 0){
         delay = del;
@@ -404,14 +407,10 @@ public:
         radius = rad;
         gain = ga;
         aziInRad = toRad(az);
-
         deviceChannelString = std::to_string(deviceChannel);
-
-//        oscTag = "speaker"+ std::to_string(deviceChannel) + "/enabled";
         oscTag = "speaker"+ deviceChannelString + "/enabled";
-        enabled = new ParameterBool(oscTag,"",1.0);
-        //enabled->setHint("latch",1.f);
 
+        enabled = new ParameterBool(oscTag,"",1.0);
         enabled->registerChangeCallback([&](bool b){
             initPanner(); //CALLED MULTIPLE TIMES WHEN USING PRESETS
         });
@@ -435,7 +434,6 @@ public:
 
     void write(float samp){
         if(writePos >= bufferSize){
-//            writePos = 0;
             writePos -= bufferSize;
         }
 
@@ -445,8 +443,7 @@ public:
         }
 
         float *b = (float*)buffer;
-//        b[writePos] = samp;
-                b[writeDelay] = samp;
+        b[writeDelay] = samp;
         writePos++;
     }
 };
@@ -846,6 +843,7 @@ public:
         return gains;
     }
 
+    //Returns the magnitude of the angle difference from 0 - Pi
     float getAbsAngleDiff(float const &angle1, float const &angle2){
         float diff = angle1 - angle2;
         diff += (diff > M_PI) ? -1.0f*M_2PI : (diff < -1.0f*M_PI) ? M_2PI : 0.0f;
@@ -955,7 +953,7 @@ public:
                     float gain = calcSpeakerSkirtGains(vs->aziInRad,vs->sourceWidth,vs->sourceWidth.max(),speakers[i].aziInRad);
 
                     if(decorrelateBlock){
-                         sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
+                        sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
                         setOutput(io,speakerChannel,io.frame(),sample * gain);
 
                     }else{
@@ -1018,21 +1016,29 @@ public:
 
         //cout << "onInit()" << endl;
 
+        float startingAngle = 170.0f;
+//        float angleInc = 11.0f;
+        float angleInc = 11.0f;
+
         float ang;
         for (int i = 0; i < 32; i++){
             int delay = rand() % static_cast<int>(MAX_DELAY + 1);
-            ang = 170.0 - (11.0*i);
+            ang = startingAngle - (angleInc*i);
             speakers.push_back(SpeakerV(i,ang,0.0,0,5.0,0,delay));
         }
 
         //-1 for phantom channels (can remove isPhantom and just check -1)
-        SpeakerV s(-1, 175,0.0,0,5.0,0,0);
+        SpeakerV s(-1, startingAngle+angleInc,0.0,0,5.0,0,0);
         s.isPhantom = true;
         speakers.push_back(s);
 
-        SpeakerV p(-1, ang-10.0,0.0,0,5.0,0,0);
+        SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
         p.isPhantom = true;
         speakers.push_back(p);
+
+//        SpeakerV p(-1, ang-10.0,0.0,0,5.0,0,0);
+//        p.isPhantom = true;
+//        speakers.push_back(p);
        // speakers.push_back(SpeakerV(-1, -100,0.0,0,5.0,0,0));
 
         initPanner();
@@ -1172,7 +1178,7 @@ public:
                             }
                             if(decorrelateBlock){
                                 if(sourcesToDecorrelate.get() == v->vsBundle.bundleIndex()+1){
-                                     break; // only source 0 for now
+                                     break;
                                 }
                             }
                         }
@@ -1204,7 +1210,7 @@ public:
                             }
                         }
                         if(sourcesToDecorrelate.get() == v->vsBundle.bundleIndex()+1){
-                             break; // only source 0 for now
+                             break;
                         }
                     }
 
@@ -1391,33 +1397,9 @@ public:
             g.color(1);
             }
             g.draw(mSpeakerMesh);
-
-//            g.texture();
-//            font.tex.bind();
-//            g.draw(fontMesh);
-//            font.tex.unbind();
-
             g.popMatrix();
         }
-        //parameterGUI.manageImGUI();
         parameterGUI.draw(g);
-
-
-
-//        speakerGUI.draw(g);
-
-//        beginIMGUI();
-//        ParameterGUI::beginPanel("Speakers");
-
-//        for(int i = 0; i < speakers.size(); i++){
-//            ParameterBool* spk = speakers[i].enabled;
-//            ParameterGUI::drawParameterMeta(spk);
-//        }
-//        //ParameterGUI::drawParameterMeta(&y);
-//        //ParameterGUI::drawParameterMeta(&z);
-//        //ParameterGUI::endPanel();
-
-//        endIMGUI();
     }
 
     bool onKeyDown(const Keyboard &k) override {
@@ -1445,36 +1427,14 @@ public:
 
           int a = 1;
           string str =to_string(a);
-          //cout << k.key() << endl;
-//        switch (k.key()) {
+
         if(k.keyAsNumber() < 10 && k.keyAsNumber() >= 0){
 
             string presetString = "preset";
-            //presetString.
-           // presetString = strcat(presetString,to_string(k.key()));
-           // strc
             presetString.append(to_string(k.keyAsNumber()));
-            //presetString.push_back(to_string(k.key()));
             presets.recallPreset(presetString);
             std::cout << presetString + " loaded." << std::endl;
         }
-//        case '1':
-//          presets.recallPreset("preset1");
-//          std::cout << "Preset 1 loaded." << std::endl;
-//          break;
-//        case '2':
-//          presets.recallPreset("preset2");
-//          std::cout << "Preset 2 loaded." << std::endl;
-//          break;
-//        case '3':
-//          presets.recallPreset("preset3");
-//          std::cout << "Preset 3 loaded." << std::endl;
-//          break;
-//        case '4':
-//          presets.recallPreset("preset4");
-//          std::cout << "Preset 4 loaded." << std::endl;
-//          break;
-        //}
         initPanner();
       }
     }
