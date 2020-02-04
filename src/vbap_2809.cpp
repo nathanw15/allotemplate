@@ -217,6 +217,9 @@ public:
     Parameter sourceWidth{"sourceWidth","", M_PI/8.0f, "", 0.0f,M_PI};
     ParameterMenu panMethod{"panMethod","",0,""};
 
+    ParameterBool scaleSrcWidth{"scaleSrcWidth","",0};
+
+
     VirtualSource(){
 
         //samplePlayer.
@@ -276,7 +279,7 @@ public:
         });
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << sourceWidth << fadeDuration;
+        vsBundle << enabled << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration;
         srcPresets << vsBundle;
     }
 
@@ -957,24 +960,65 @@ public:
 
         }else if(vs->panMethod.get()==1){ //Skirt
 
+            float gains[speakers.size()];
+            float gainsAccum = 0.0;
             float sample = 0.0f;
             if(!vs->decorrelateSrc.get()){
                  sample = vs->getSample();
             }
+
             for (int i = 0; i < speakers.size(); i++){
+                gains[i] = 0.0;
                 if(!speakers[i].isPhantom && speakers[i].enabled->get()){
                     int speakerChannel = speakers[i].deviceChannel;
                     float gain = calcSpeakerSkirtGains(vs->aziInRad,vs->sourceWidth,vs->sourceWidth.max(),speakers[i].aziInRad);
+                    gains[i] = gain;
+                    gainsAccum += gain;
+                }
+            }
 
+            float gainScaleFactor = 0.0;
+
+
+            if(vs->scaleSrcWidth.get()){
+                if(!gainsAccum == 0.0){
+                    gainScaleFactor = 1.0/gainsAccum;
+                }
+            }else{
+                gainScaleFactor = 1.0;
+            }
+
+
+            for (int i = 0; i < speakers.size(); i++){
+                if(!speakers[i].isPhantom && speakers[i].enabled->get()){
+                    int speakerChannel = speakers[i].deviceChannel;
                     if(vs->decorrelateSrc.get()){
                         sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
-                        setOutput(io,speakerChannel,io.frame(),sample * gain * xFadeGain);
+                        setOutput(io,speakerChannel,io.frame(),sample * gains[i] * gainScaleFactor * xFadeGain);
 
                     }else{
-                        setOutput(io,speakerChannel,io.frame(),sample * gain * xFadeGain);
+                        setOutput(io,speakerChannel,io.frame(),sample * gains[i] * gainScaleFactor * xFadeGain);
                     }
                 }
             }
+
+
+
+//            for (int i = 0; i < speakers.size(); i++){
+//                gains[i] = 0.0;
+//                if(!speakers[i].isPhantom && speakers[i].enabled->get()){
+//                    int speakerChannel = speakers[i].deviceChannel;
+//                    float gain = calcSpeakerSkirtGains(vs->aziInRad,vs->sourceWidth,vs->sourceWidth.max(),speakers[i].aziInRad);
+
+//                    if(vs->decorrelateSrc.get()){
+//                        sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
+//                        setOutput(io,speakerChannel,io.frame(),sample * gain * xFadeGain);
+
+//                    }else{
+//                        setOutput(io,speakerChannel,io.frame(),sample * gain * xFadeGain);
+//                    }
+//                }
+//            }
         }else if(vs->panMethod.get() == 2){ // Snap Source Width
             float sample = 0.0f;
             if(!vs->decorrelateSrc.get()){
@@ -986,7 +1030,7 @@ public:
                     float angleDiff = getAbsAngleDiff(vs->aziInRad,speakers[i].aziInRad);
                     if(angleDiff <= vs->sourceWidth/2.0f){
                         if(vs->decorrelateSrc.get()){
-                             sample = decorrelation.getOutputBuffer(speakerChannel+ outputBufferOffset)[io.frame()];
+                            sample = decorrelation.getOutputBuffer(speakerChannel+ outputBufferOffset)[io.frame()];
                             setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
                         }else{
                             setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
