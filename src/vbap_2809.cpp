@@ -319,6 +319,7 @@ public:
             break;
         case 2:
             sample = sourceGain.get() * osc() * 0.2;
+            break;
         default:
             sample = 0.0;
             break;
