@@ -34,7 +34,7 @@ using namespace al;
 using namespace std;
 
 
-//osc::Send sender(9011, "127.0.0.1");
+osc::Send sender(9011, "127.0.0.1");
 //ParameterServer paramServer("127.0.0.1",8080);
 
 float radius = 5.0; //src distance
@@ -489,12 +489,16 @@ public:
         //searchpaths.print();
 
         FileList fl = itemListInDir("src/sounds");
+        sender.send("/files","clear");
         for(int i = 0; i < fl.count(); i++){
             string fPath = fl[i].filepath();
             fPath = fPath.substr(fPath.find_last_of("/\\")+1);
             //cout << fPath << endl;
             files.push_back(fPath);
+            sender.send("/files",fPath);
         }
+
+
 
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
 //        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
@@ -761,6 +765,9 @@ public:
 //        }
 
         parameterServer().sendAllParameters("127.0.0.1", 9011);
+
+        //parameterServer().
+
     }
 
     void createMatrix(Vec3d left, Vec3d right){
