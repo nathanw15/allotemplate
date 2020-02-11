@@ -101,7 +101,9 @@ Parameter maxFreqDev("maxFreqDev","",10.0,"", 0.0, 50.0);
 Parameter maxTau("maxTau","",1.0,"", 0.0, 10.0);
 Parameter startPhase("startPhase","",0.0,"", 0.0, 10.0);
 Parameter phaseDev("phaseDev","",0.0,"", 0.0, 10.0);
-Trigger updateDecorrelation("updateDecorrelation","","");
+//Trigger updateDecorrelation("updateDecorrelation","","");
+
+Trigger generateRandDecorSeed("generateRandDecorSeed","","");
 
 ParameterBool drawLabels("drawLabels","",1.0);
 
@@ -480,6 +482,8 @@ public:
     Font font;
     Mesh fontMesh;
 
+    int decorrelationSeed = 1000;
+
     MyApp()
     {
 
@@ -503,7 +507,7 @@ public:
         //cout << "Path of Count " << searchpaths.find("count.wav").filepath().c_str() << endl;
 //        parameterGUI << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << combineAllChannels << decorrelate << decorrelationMethod << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
 
-        parameterGUI << soundOn << masterGain << resetSamples << sampleWise  << combineAllChannels << xFadeCh1_2 << xFadeValue << sourcesToDecorrelate << decorrelationMethod << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << updateDecorrelation << speakerDensity << drawLabels;
+        parameterGUI << soundOn << masterGain << resetSamples << sampleWise  << combineAllChannels << xFadeCh1_2 << xFadeValue << sourcesToDecorrelate << decorrelationMethod << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << speakerDensity << drawLabels;
 
         parameterGUI << srcPresets;
 
@@ -523,7 +527,7 @@ public:
 
         //parameterGUI << presets;
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed;
 
         setAllPanMethod.setElements(panningMethodNames);
         setAllPosUpdate.setElements(posUpdateNames);
@@ -537,13 +541,23 @@ public:
             configureDecorrelation.set(1.0);
         });
 
-//        phaseFactor.registerChangeCallback([&](float val){
-//            configureDecorrelation.set(1.0);
-//        });
-
-        updateDecorrelation.registerChangeCallback([&](float val){
+        generateRandDecorSeed.registerChangeCallback([&](float val){
+            decorrelationSeed = rand() % static_cast<int>(1001);
+            cout << "Decorrelation Seed: " << decorrelationSeed << endl;
             configureDecorrelation.set(1.0);
         });
+
+        maxJump.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        phaseFactor.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        deltaFreq.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        maxFreqDev.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        maxTau.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        startPhase.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+        phaseDev.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
+
+//        updateDecorrelation.registerChangeCallback([&](float val){
+//            configureDecorrelation.set(1.0);
+//        });
 
         setMorphTime.registerChangeCallback([&](float val){
             srcPresets.setMorphTime(val);
@@ -1201,7 +1215,9 @@ public:
 //                                true, 1000, mMaxjump);
 
         decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
-                                true, 1000, maxJump.get(),phaseFactor.get());
+                                true, decorrelationSeed, maxJump.get(),phaseFactor.get());
+
+
     }
 
     void onCreate() override {
@@ -1246,10 +1262,10 @@ public:
                     if(!decorrelationMethod.get()){
                         //Kendall Method
                         decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
-                                                true, 1000, maxJump.get(),phaseFactor.get());
+                                                true, decorrelationSeed, maxJump.get(),phaseFactor.get());
                     }else {
                         //Zotter Method
-                        decorrelation.configureDeterministic(audioIO().framesPerBuffer(), routingMap, true, 1000, deltaFreq, maxFreqDev, maxTau, startPhase, phaseDev);
+                        decorrelation.configureDeterministic(audioIO().framesPerBuffer(), routingMap, true, decorrelationSeed, deltaFreq, maxFreqDev, maxTau, startPhase, phaseDev);
                     }
                 }
 
