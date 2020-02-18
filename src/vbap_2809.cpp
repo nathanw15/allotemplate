@@ -532,7 +532,7 @@ public:
             parameterServer() << newVS->vsBundle;
         }
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed << maxJump << phaseFactor;
 
         sampleWise.setHint("hide", 1.0);
         combineAllChannels.setHint("hide", 1.0);
