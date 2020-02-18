@@ -182,6 +182,11 @@ public:
     gam::Sine<> osc;
     gam::Sine<> positionOsc;
 
+    gam::Impulse<> impulse;
+    gam::Saw<> saw;
+    gam::Square<> square;
+
+
     Parameter posOscFreq{"posOscFreq","",1.0,"",0.0,5.0};
     Parameter posOscAmp{"posOscAmp","",1.0,"",0.0,M_PI};
 
@@ -223,7 +228,7 @@ public:
     Parameter rampDuration{"rampDuration", "",1.0,"",0.0,10.0};
     ParameterMenu sourceSound{"sourceSound","",0,""};
 
-    Parameter sourceWidth{"sourceWidth","", M_PI/8.0f, "", 0.0f,M_PI};
+    Parameter sourceWidth{"sourceWidth","", M_PI/8.0f, "", 0.0f,M_2PI};
     ParameterMenu panMethod{"panMethod","",0,""};
 
     ParameterBool scaleSrcWidth{"scaleSrcWidth","",0};
@@ -233,11 +238,14 @@ public:
 
         angularFreq.set(angFreqCycles.get()*M_2PI);
         osc.freq(oscFreq.get());
+        impulse.freq(oscFreq.get());
+        saw.freq(oscFreq.get());
+        square.freq(oscFreq.get());
 
         positionOsc.freq(posOscFreq.get());
 
         panMethod.setElements(panningMethodNames);
-        sourceSound.setElements({"SoundFile","Noise","Sine"});
+        sourceSound.setElements({"SoundFile","Noise","Sine","Impulse","Saw", "Square"});
         positionUpdate.setElements(posUpdateNames);
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
@@ -249,7 +257,7 @@ public:
         sourceRamp.rampDuration = rampDuration.get();
 
         positionUpdate.registerChangeCallback([&](float val){
-            if(val == positionUpdate.get()){
+            if(val == 3){
                 cout << "Setting Center Azi" << endl;
                 centerAzi = aziInRad.get();
             }
@@ -265,6 +273,9 @@ public:
 
         oscFreq.registerChangeCallback([&](float val){
            osc.freq(val);
+           impulse.freq(val);
+           saw.freq(val);
+           square.freq(val);
         });
 
         aziInRad.setProcessingCallback([&](float val){
@@ -333,14 +344,23 @@ public:
             if(samplePlayer.done()){
                 samplePlayer.reset();
             }
-            sample = sourceGain.get() * samplePlayer();
+            sample = samplePlayer();
             break;
 
         case 1:
-            sample = sourceGain.get() * noise();
+            sample = noise();
             break;
         case 2:
-            sample = sourceGain.get() * osc() * 0.2;
+            sample = osc() * 0.2;
+            break;
+        case 3:
+            sample = impulse() * 0.2;
+            break;
+        case 4:
+            sample = saw() * 0.2;
+            break;
+        case 5:
+            sample = square() * 0.2;
             break;
         default:
             sample = 0.0;
@@ -356,7 +376,7 @@ public:
             sample = 0.0;
         }
 
-        return sample;
+        return sample * sourceGain.get();
 
     }
     
@@ -532,7 +552,7 @@ public:
             parameterServer() << newVS->vsBundle;
         }
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed << maxJump << phaseFactor;
+        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev;
 
         sampleWise.setHint("hide", 1.0);
         combineAllChannels.setHint("hide", 1.0);
@@ -992,34 +1012,30 @@ public:
             for (int i = 0; i < speakers.size(); i++){
                 gains[i] = 0.0;
                 if(!speakers[i].isPhantom && speakers[i].enabled->get()){
-                    int speakerChannel = speakers[i].deviceChannel;
+                    //int speakerChannel = speakers[i].deviceChannel;
                     float gain = calcSpeakerSkirtGains(vs->aziInRad,vs->sourceWidth,vs->sourceWidth.max(),speakers[i].aziInRad);
                     gains[i] = gain;
-                    gainsAccum += gain;
+                    gainsAccum += gain*gain;
                 }
             }
 
-            float gainScaleFactor = 0.0;
-
+            float gainScaleFactor = 1.0;
 
             if(vs->scaleSrcWidth.get()){
                 if(!gainsAccum == 0.0){
-                    gainScaleFactor = 1.0/gainsAccum;
+                    gainScaleFactor = sqrt(gainsAccum);
                 }
-            }else{
-                gainScaleFactor = 1.0;
             }
-
 
             for (int i = 0; i < speakers.size(); i++){
                 if(!speakers[i].isPhantom && speakers[i].enabled->get()){
                     int speakerChannel = speakers[i].deviceChannel;
                     if(vs->decorrelateSrc.get()){
                         sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
-                        setOutput(io,speakerChannel,io.frame(),sample * gains[i] * gainScaleFactor * xFadeGain);
+                        setOutput(io,speakerChannel,io.frame(),sample * (gains[i] / gainScaleFactor) * xFadeGain);
 
                     }else{
-                        setOutput(io,speakerChannel,io.frame(),sample * gains[i] * gainScaleFactor * xFadeGain);
+                        setOutput(io,speakerChannel,io.frame(),sample * (gains[i] / gainScaleFactor) * xFadeGain);
                     }
                 }
             }
