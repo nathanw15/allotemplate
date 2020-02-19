@@ -56,6 +56,7 @@ vector<string> panningMethodNames{"VBAP","SpeakerSkirt","Snap to Source Width", 
 Parameter maxDelay("maxDelay","",0.0,"",0.0,1.0);
 
 Trigger resetSamples("resetSamples","","");
+Trigger resetPosOscPhase("resetPosOscPhase","","");
 
 ParameterMenu setAllPosUpdate("setAllPosUpdate","",0,"");
 ParameterMenu setAllSoundFileIdx("setAllSoundFileIdx","",0,"");
@@ -187,6 +188,8 @@ public:
     gam::Square<> square;
 
 
+    Parameter posOscPhase{"posOscPhase","", 0.0,"",0.0,1.0};
+
     Parameter posOscFreq{"posOscFreq","",1.0,"",0.0,5.0};
     Parameter posOscAmp{"posOscAmp","",1.0,"",0.0,M_PI};
 
@@ -263,6 +266,10 @@ public:
             }
         });
 
+        posOscPhase.registerChangeCallback([&](float val){
+            positionOsc.phase(val);
+         });
+
         posOscFreq.registerChangeCallback([&](float val){
            positionOsc.freq(val);
         });
@@ -309,7 +316,7 @@ public:
         });
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp;
+        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
         srcPresets << vsBundle;
     }
 
@@ -540,7 +547,7 @@ public:
             sender.send("/files",fPath);
         }
 
-        parameterGUI << soundOn << masterGain << resetSamples << sampleWise  << combineAllChannels << xFadeCh1_2 << xFadeValue << sourcesToDecorrelate << decorrelationMethod << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << speakerDensity << drawLabels;
+        parameterGUI << soundOn << masterGain << resetSamples << resetPosOscPhase << sampleWise  << combineAllChannels << xFadeCh1_2 << xFadeValue << sourcesToDecorrelate << decorrelationMethod << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << speakerDensity << drawLabels;
         parameterGUI << srcPresets;
         xsetAllBundle << setAllEnabled << setAllDecorrelate << setAllPanMethod << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
         parameterGUI << xsetAllBundle;
@@ -552,7 +559,7 @@ public:
             parameterServer() << newVS->vsBundle;
         }
 
-        parameterServer() << soundOn << resetSamples << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev;
+        parameterServer() << soundOn << resetSamples << resetPosOscPhase << sampleWise << useDelay << masterGain << maxDelay << xsetAllBundle << setMorphTime << recallPreset << combineAllChannels << setAllDecorrelate << decorrelationMethod << speakerDensity << drawLabels << xFadeCh1_2 << xFadeValue << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev;
 
         sampleWise.setHint("hide", 1.0);
         combineAllChannels.setHint("hide", 1.0);
@@ -614,6 +621,12 @@ public:
 
         recallPreset.registerChangeCallback([&](float val){
             srcPresets.recallPreset(val);
+        });
+
+        resetPosOscPhase.registerChangeCallback([&](float val){
+            for(VirtualSource *v: sources){
+                v->posOscPhase.set(0.0);
+            }
         });
 
         setPlayerPhase.registerChangeCallback([&](float val){
