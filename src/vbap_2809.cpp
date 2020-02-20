@@ -26,7 +26,8 @@
 // 1024 block size seems to fix issue where it sounded like samples were being dropped.
 #define BLOCK_SIZE (1024)
 #define MAX_DELAY 44100
-
+//#define IR_LENGTH 2048
+#define IR_LENGTH 2048
 #define NUM_SOURCES 5
 
 using namespace al;
@@ -111,6 +112,10 @@ int highestChannel = 0;
 
 mutex enabledSpeakersLock;
 
+//std::vector<SpeakerV> speakers;
+//std::vector<SpeakerV*> enabledSpeakers;
+Mat<2,double> matrix;
+
 struct Ramp {
 
     unsigned int startSample, endSample;
@@ -178,41 +183,34 @@ void wrapValues(float &val){
 class VirtualSource {
 public:
 
+    //std::vector<SpeakerV*> enabledSpeakersVS;
+
     gam::SamplePlayer<> samplePlayer;
     gam::NoisePink<> noise;
     gam::Sine<> osc;
     gam::Sine<> positionOsc;
-
     gam::Impulse<> impulse;
     gam::Saw<> saw;
     gam::Square<> square;
 
-
     Parameter posOscPhase{"posOscPhase","", 0.0,"",0.0,1.0};
-
     Parameter posOscFreq{"posOscFreq","",1.0,"",0.0,5.0};
     Parameter posOscAmp{"posOscAmp","",1.0,"",0.0,M_PI};
 
     float centerAzi = 0.0;
 
-
     Ramp sourceRamp;
 
     int previousSamp = 0;
-
     //For "Snap with fade"
     int prevSnapChan = -1;
     int currentSnapChan = -1;
     int fadeCounter = 0;
     ParameterInt fadeDuration{"fadeDuration","",100,"",0,10000};
 
-    //float buffer[BLOCK_SIZE];
-
     ParameterBundle vsBundle{"vsBundle"};
     ParameterBool enabled{"enabled","",0.0};
-
     ParameterBool mute{"mute","",0.0};
-
     ParameterBool decorrelateSrc{"decorrelateSrc","",0};
     ParameterBool invert{"invert","",0};
 
@@ -236,7 +234,6 @@ public:
 
     ParameterBool scaleSrcWidth{"scaleSrcWidth","",0};
 
-
     VirtualSource(){
 
         angularFreq.set(angFreqCycles.get()*M_2PI);
@@ -253,7 +250,8 @@ public:
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
-        samplePlayer.rate(samplePlayerRate.get());
+//        samplePlayer.rate(samplePlayerRate.get());
+        samplePlayer.rate(1.0);
 
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
@@ -320,6 +318,16 @@ public:
         srcPresets << vsBundle;
     }
 
+//    void updateEnabledSpeakers(){
+
+//        enabledSpeakersVS.clear();
+//        for(int i = 0; i < speakers.size(); i ++){
+//            if(speakers[i].enabled->get() > 0.5){
+//                enabledSpeakersVS.push_back(&speakers[i]);
+//            }
+//        }
+//    }
+
     void updatePosition(unsigned int sampleNumber){
 
         switch ((int)positionUpdate.get()) {
@@ -373,7 +381,6 @@ public:
             sample = 0.0;
             break;
         }
-
 
         if(invert.get()){
             sample *= -1.0;
@@ -486,11 +493,15 @@ public:
 
 std::vector<SpeakerV> speakers;
 std::vector<SpeakerV*> enabledSpeakers;
-Mat<2,double> matrix;
+//Mat<2,double> matrix;
 
 bool speakerSort(SpeakerV const *first, SpeakerV const *second){
     return first->azimuth < second->azimuth;
 }
+
+//bool speakerSortTest(SpeakerV first, SpeakerV second){
+//    return first.azimuth < second.azimuth;
+//}
 
 void initPanner(){
 
@@ -523,7 +534,9 @@ public:
 
     //Size of the decorrelation filter. See Kendall p. 75
     //How does this translate to the duration of the impulse response?
-    Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
+    //Decorrelation decorrelation{BLOCK_SIZE*2}; //Check to see if this is correct
+    Decorrelation decorrelation{IR_LENGTH};
+    int decorrelationSeed = 1000;
 
     //float mMaxjump{M_PI};
     map<uint32_t, vector<uint32_t>> routingMap;
@@ -531,7 +544,7 @@ public:
     Font font;
     Mesh fontMesh;
 
-    int decorrelationSeed = 1000;
+
 
     MyApp()
     {
@@ -1033,7 +1046,6 @@ public:
             }
 
             float gainScaleFactor = 1.0;
-
             if(vs->scaleSrcWidth.get()){
                 if(!gainsAccum == 0.0){
                     gainScaleFactor = sqrt(gainsAccum);
@@ -1055,24 +1067,57 @@ public:
 
         }else if(vs->panMethod.get() == 2){ // Snap Source Width
             float sample = 0.0f;
+            float gainsAccum = 0.0;
+            float gains[speakers.size()];
             if(!vs->decorrelateSrc.get()){
                  sample = vs->getSample();
             }
+
             for (int i = 0; i < speakers.size(); i++){
+                gains[i] = 0.0;
                 if(!speakers[i].isPhantom && speakers[i].enabled->get()){
-                    int speakerChannel = speakers[i].deviceChannel;
                     float angleDiff = getAbsAngleDiff(vs->aziInRad,speakers[i].aziInRad);
                     if(angleDiff <= vs->sourceWidth/2.0f){
-                        if(vs->decorrelateSrc.get()){
-                            sample = decorrelation.getOutputBuffer(speakerChannel+ outputBufferOffset)[io.frame()];
-                            setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
-                        }else{
-                            setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
-                        }
-                    }else{
-                        setOutput(io,speakerChannel,io.frame(),0.0f);
+                        gains[i] = 1.0;
+                        gainsAccum += 1.0;
                     }
                 }
+            }
+
+            float gainScaleFactor = 1.0;
+            if(vs->scaleSrcWidth.get()){
+                if(!gainsAccum == 0.0){
+                    gainScaleFactor = sqrt(gainsAccum);
+                }
+            }
+
+            for (int i = 0; i < speakers.size(); i++){
+
+                if(!speakers[i].isPhantom && speakers[i].enabled->get()){
+                    int speakerChannel = speakers[i].deviceChannel;
+                    //float angleDiff = getAbsAngleDiff(vs->aziInRad,speakers[i].aziInRad);
+                        if(vs->decorrelateSrc.get()){
+                            sample = decorrelation.getOutputBuffer(speakerChannel+ outputBufferOffset)[io.frame()];
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[i] / gainScaleFactor) * xFadeGain);
+                        }else{
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[i] / gainScaleFactor) * xFadeGain);
+                        }
+
+                }
+//                if(!speakers[i].isPhantom && speakers[i].enabled->get()){
+//                    int speakerChannel = speakers[i].deviceChannel;
+//                    float angleDiff = getAbsAngleDiff(vs->aziInRad,speakers[i].aziInRad);
+//                    if(angleDiff <= vs->sourceWidth/2.0f){
+//                        if(vs->decorrelateSrc.get()){
+//                            sample = decorrelation.getOutputBuffer(speakerChannel+ outputBufferOffset)[io.frame()];
+//                            setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
+//                        }else{
+//                            setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
+//                        }
+//                    }else{
+//                        setOutput(io,speakerChannel,io.frame(),0.0f);
+//                    }
+//                }
             }
 
         }else if(vs->panMethod.get() == 3){ //Snap to Nearest Speaker
@@ -1154,6 +1199,17 @@ public:
         SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
         p.isPhantom = true;
         speakers.push_back(p);
+
+        for(int i = 0; i < speakers.size(); i++){
+            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
+        }
+
+
+        //std::sort(speakers.begin(),speakers.end(),&speakerSortTest);
+
+        for(int i = 0; i < speakers.size(); i++){
+            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
+        }
 
 //        SpeakerV p(-1, ang-10.0,0.0,0,5.0,0,0);
 //        p.isPhantom = true;
@@ -1246,6 +1302,7 @@ public:
                         //Zotter Method
                         decorrelation.configureDeterministic(audioIO().framesPerBuffer(), routingMap, true, decorrelationSeed, deltaFreq, maxFreqDev, maxTau, startPhase, phaseDev);
                     }
+                    cout << "IR lenghts: " << decorrelation.getSize() << endl;
                 }
 
                 for(VirtualSource *v: sources){
