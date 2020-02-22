@@ -16,6 +16,8 @@
 
 #include "al_ext/spatialaudio/al_Decorrelation.hpp"
 
+#include "al/sphere/al_AlloSphereSpeakerLayout.hpp"
+
 #include "al/graphics/al_Font.hpp"
 
 #include <atomic>
@@ -868,45 +870,93 @@ public:
         openGLCartToAmbiCart(ambiCartSrcPos);
         //std::sort(enabledSpeakers.begin(),enabledSpeakers.end(),&speakerSort);
         Vec3d gains(0.,0.,0.);
-        float speakSrcAngle,linearDistance;
+        //Vec3d gains;
+        //float speakSrcAngle,linearDistance;
 
         if(enabledSpeakersLock.try_lock()){ //TODO: handle differently. enabled speakers is cleared by initPanner() and needs to be locked when updating
             //check if source is beyond the first or last speaker
-            if(srcAzi < enabledSpeakers[0]->aziInRad){
-                speakerChan1 = enabledSpeakers[0]->deviceChannel;
-                speakerChan2 = enabledSpeakers[0+1]->deviceChannel;
-                speakSrcAngle = fabsf(enabledSpeakers[0]->aziInRad - srcAzi);
-                gains.x = 1.f / (radius * (M_PI - speakSrcAngle));
+//            if(srcAzi < enabledSpeakers[0]->aziInRad){
+//                speakerChan1 = enabledSpeakers[0]->deviceChannel;
+//                speakerChan2 = enabledSpeakers[0+1]->deviceChannel;
+//                speakSrcAngle = fabsf(enabledSpeakers[0]->aziInRad - srcAzi);
+//                gains.x = 1.f / (radius * (M_PI - speakSrcAngle));
 
-            } else if(srcAzi > enabledSpeakers[enabledSpeakers.size()-1]->aziInRad){
-                speakerChan1 = enabledSpeakers[enabledSpeakers.size()-2]->deviceChannel;//set to speaker before last
-                speakerChan2 = enabledSpeakers[enabledSpeakers.size()-1]->deviceChannel;
-                speakSrcAngle = fabsf(enabledSpeakers[enabledSpeakers.size()-1]->aziInRad - srcAzi);
-                linearDistance = 2.0*radius*cos((M_PI - speakSrcAngle)/2.0);
-                gains.y = 1.f / (radius * (M_PI - speakSrcAngle));
+//            } else if(srcAzi > enabledSpeakers[enabledSpeakers.size()-1]->aziInRad){
+//                speakerChan1 = enabledSpeakers[enabledSpeakers.size()-2]->deviceChannel;//set to speaker before last
+//                speakerChan2 = enabledSpeakers[enabledSpeakers.size()-1]->deviceChannel;
+//                speakSrcAngle = fabsf(enabledSpeakers[enabledSpeakers.size()-1]->aziInRad - srcAzi);
+//                linearDistance = 2.0*radius*cos((M_PI - speakSrcAngle)/2.0);
+//                gains.y = 1.f / (radius * (M_PI - speakSrcAngle));
 
-            } else{//Source between first and last speakers
-                for(int i = 0; i < enabledSpeakers.size()-1; i++){
-                    speakerChan1 = enabledSpeakers[i]->deviceChannel;
-                    speakerChan2 = enabledSpeakers[i+1]->deviceChannel;
-                    if(srcAzi == enabledSpeakers[i]->aziInRad ){
-                        gains.x = 1.0;
-                        break;
-                    }else if(srcAzi > enabledSpeakers[i]->aziInRad && srcAzi < enabledSpeakers[i+1]->aziInRad){
-                        createMatrix(enabledSpeakers[i]->vec(),enabledSpeakers[i+1]->vec());
-                        invert(matrix);
-                        for (unsigned i = 0; i < 2; i++){
-                            for (unsigned j = 0; j < 2; j++){
-                                gains[i] += ambiCartSrcPos[j] * matrix(j,i);
-                            }
+//            }
+
+//            else{//Source between first and last speakers
+//                for(int i = 0; i < enabledSpeakers.size()-1; i++){
+//                    speakerChan1 = enabledSpeakers[i]->deviceChannel;
+//                    speakerChan2 = enabledSpeakers[i+1]->deviceChannel;
+//                    if(srcAzi == enabledSpeakers[i]->aziInRad ){
+//                        gains.x = 1.0;
+//                        break;
+//                    }else if(srcAzi > enabledSpeakers[i]->aziInRad && srcAzi < enabledSpeakers[i+1]->aziInRad){
+//                        createMatrix(enabledSpeakers[i]->vec(),enabledSpeakers[i+1]->vec());
+//                        invert(matrix);
+//                        for (unsigned i = 0; i < 2; i++){
+//                            for (unsigned j = 0; j < 2; j++){
+//                                gains[i] += ambiCartSrcPos[j] * matrix(j,i);
+//                            }
+//                        }
+//                        gains = gains.normalize();
+//                        break;
+//                    } else if(srcAzi == enabledSpeakers[i+1]->aziInRad){
+//                        gains.y = 1.0;
+//                        break;
+//                    }
+//                }
+//            }
+
+            for(int i = 0; i < enabledSpeakers.size(); i++){
+
+                speakerChan1 = enabledSpeakers[i]->deviceChannel;
+
+                int chan2Idx;
+
+                if(i+1 == enabledSpeakers.size()){
+                    chan2Idx = 0;
+                }else{
+                    chan2Idx = i+1;
+                }
+
+                speakerChan2 = enabledSpeakers[chan2Idx]->deviceChannel;
+
+                if(srcAzi == enabledSpeakers[i]->aziInRad ){
+                    gains.x = 1.0;
+                    break;
+                }
+
+                else if(srcAzi == enabledSpeakers[chan2Idx]->aziInRad){
+                    gains.y = 1.0;
+                    break;
+                }
+
+ //               else if(srcAzi > enabledSpeakers[i]->aziInRad && srcAzi < enabledSpeakers[chan2Idx]->aziInRad){
+                    createMatrix(enabledSpeakers[i]->vec(),enabledSpeakers[chan2Idx]->vec());
+                    invert(matrix);
+                    for (unsigned i = 0; i < 2; i++){
+                        for (unsigned j = 0; j < 2; j++){
+                            gains[i] += ambiCartSrcPos[j] * matrix(j,i);
                         }
+                    }
+
+                    if((gains[0] >= 0) && (gains[1] >=0)){
+
                         gains = gains.normalize();
                         break;
-                    } else if(srcAzi == enabledSpeakers[i+1]->aziInRad){
-                        gains.y = 1.0;
-                        break;
+                    } else{
+                        gains.x = gains.y = 0.0;
                     }
-                }
+//                }
+
+
             }
 
             enabledSpeakersLock.unlock();
@@ -1182,34 +1232,49 @@ public:
 
     void onInit() override {
 
-        float startingAngle = 170.0f;
-        float angleInc = 11.0f;
-        float ang;
-        for (int i = 0; i < 32; i++){
-            int delay = rand() % static_cast<int>(MAX_DELAY + 1);
-            ang = startingAngle - (angleInc*i);
-            speakers.push_back(SpeakerV(i,ang,0.0,0,5.0,0,delay));
+// ****** 2809 ******
+//        float startingAngle = 170.0f;
+//        float angleInc = 11.0f;
+//        float ang;
+//        for (int i = 0; i < 32; i++){
+//            int delay = rand() % static_cast<int>(MAX_DELAY + 1);
+//            ang = startingAngle - (angleInc*i);
+//            speakers.push_back(SpeakerV(i,ang,0.0,0,5.0,0,delay));
+//        }
+
+//        //-1 for phantom channels (can remove isPhantom and just check -1)
+//        SpeakerV s(-1, startingAngle+angleInc,0.0,0,5.0,0,0);
+//        s.isPhantom = true;
+//        speakers.push_back(s);
+
+//        SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
+//        p.isPhantom = true;
+//        speakers.push_back(p);
+// ******  end 2809 ******
+
+// ****** Allosphere ******
+        SpeakerLayout alloLayout;
+        alloLayout = AlloSphereSpeakerLayout();
+
+        for(int i = 0; i < alloLayout.numSpeakers(); i++){
+            Speaker spk = alloLayout.speakers()[i];
+            if(spk.elevation == 0.0){
+                speakers.push_back(SpeakerV(spk.deviceChannel,spk.azimuth,0.0,0,5.0,0,0.0));
+            }
         }
 
-        //-1 for phantom channels (can remove isPhantom and just check -1)
-        SpeakerV s(-1, startingAngle+angleInc,0.0,0,5.0,0,0);
-        s.isPhantom = true;
-        speakers.push_back(s);
 
-        SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
-        p.isPhantom = true;
-        speakers.push_back(p);
 
-        for(int i = 0; i < speakers.size(); i++){
-            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
-        }
+//        for(int i = 0; i < speakers.size(); i++){
+//            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
+//        }
 
 
         //std::sort(speakers.begin(),speakers.end(),&speakerSortTest);
 
-        for(int i = 0; i < speakers.size(); i++){
-            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
-        }
+//        for(int i = 0; i < speakers.size(); i++){
+//            cout << "Speaker: " << i << " chan: " << speakers[i].deviceChannel << " azi: " << speakers[i].aziInRad << endl;
+//        }
 
 //        SpeakerV p(-1, ang-10.0,0.0,0,5.0,0,0);
 //        p.isPhantom = true;
@@ -1240,16 +1305,23 @@ public:
         mSpeakerMesh.primitive(Mesh::LINES);
 
         uint32_t key = 0;
-        uint32_t val = 0;
+        //uint32_t val = 0;
 
         //TODO: this is for one source only, "ERROR convolution config failed" if > than 2 sources
         // MAXINP set to 64 in zita-convolver.h line 362
 
         for(int i = 0 ; i < sourcesToDecorrelate.get(); i++){
             vector<uint32_t> values;
-            for(int j = 0; j < (highestChannel + 1); j++){
-                values.push_back(val);
-                val++;
+//            for(int j = 0; j < (highestChannel + 1); j++){
+//                values.push_back(val);
+//                val++;
+//            }
+
+            for(int j = 0; j < speakers.size(); j++){
+                if(!speakers[j].isPhantom){
+                    values.push_back(speakers[j].deviceChannel);
+                }
+                //val++;
             }
             routingMap.insert(std::pair<uint32_t,vector<uint32_t>>(key,values));
 
