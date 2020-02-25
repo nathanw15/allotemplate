@@ -35,6 +35,8 @@
 using namespace al;
 using namespace std;
 
+// 0 for 2809, 1 for Allosphere
+const int location = 0;
 
 osc::Send sender(9011, "127.0.0.1");
 //ParameterServer paramServer("127.0.0.1",8080);
@@ -114,8 +116,6 @@ int highestChannel = 0;
 
 mutex enabledSpeakersLock;
 
-//std::vector<SpeakerV> speakers;
-//std::vector<SpeakerV*> enabledSpeakers;
 Mat<2,double> matrix;
 
 struct Ramp {
@@ -418,7 +418,6 @@ public:
             prevGain = 0.0;
         }
     }
-
 };
 
 vector<VirtualSource*> sources;
@@ -545,8 +544,6 @@ public:
 
     Font font;
     Mesh fontMesh;
-
-
 
     MyApp()
     {
@@ -776,7 +773,6 @@ public:
         triggerAllRamps.registerChangeCallback([&](float val){
             if(val == 1.f){
                 for(VirtualSource *v: sources){
-//                    v->sourceRamp.triggerRamp.set(1.f);
                     v->triggerRamp.set(1.f);
                 }
             }
@@ -1053,14 +1049,11 @@ public:
             }
         }
 
-
-
         if(vs->panMethod.get() == 0){ // VBAP
             int speakerChan1, speakerChan2;
             Vec3d gains = calcGains(io,vs->aziInRad, speakerChan1, speakerChan2);
             float sampleOut1, sampleOut2;
             if(vs->decorrelateSrc.get()){
-
                 if(speakerChan1 != -1){
                      sampleOut1 = decorrelation.getOutputBuffer(speakerChan1+outputBufferOffset)[io.frame()];
                     setOutput(io,speakerChan1,io.frame(),sampleOut1 * gains[0] * xFadeGain);
@@ -1074,8 +1067,6 @@ public:
                 setOutput(io,speakerChan1,io.frame(),sample * gains[0] * xFadeGain);
                 setOutput(io,speakerChan2,io.frame(),sample * gains[1] * xFadeGain);
             }
-
-
         }else if(vs->panMethod.get()==1){ //Skirt
 
             float gains[speakers.size()];
@@ -1233,33 +1224,38 @@ public:
     void onInit() override {
 
 // ****** 2809 ******
-//        float startingAngle = 170.0f;
-//        float angleInc = 11.0f;
-//        float ang;
-//        for (int i = 0; i < 32; i++){
-//            int delay = rand() % static_cast<int>(MAX_DELAY + 1);
-//            ang = startingAngle - (angleInc*i);
-//            speakers.push_back(SpeakerV(i,ang,0.0,0,5.0,0,delay));
-//        }
+        if(location == 0){
+            float startingAngle = 170.0f;
+            float angleInc = 11.0f;
+            float ang;
+            for (int i = 0; i < 32; i++){
+                int delay = rand() % static_cast<int>(MAX_DELAY + 1);
+                ang = startingAngle - (angleInc*i);
+                speakers.push_back(SpeakerV(i,ang,0.0,0,5.0,0,delay));
+            }
 
-//        //-1 for phantom channels (can remove isPhantom and just check -1)
-//        SpeakerV s(-1, startingAngle+angleInc,0.0,0,5.0,0,0);
-//        s.isPhantom = true;
-//        speakers.push_back(s);
+            //-1 for phantom channels (can remove isPhantom and just check -1)
+            SpeakerV s(-1, startingAngle+angleInc,0.0,0,5.0,0,0);
+            s.isPhantom = true;
+            speakers.push_back(s);
 
-//        SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
-//        p.isPhantom = true;
-//        speakers.push_back(p);
+            SpeakerV p(-1, ang - angleInc,0.0,0,5.0,0,0);
+            p.isPhantom = true;
+            speakers.push_back(p);
+        }
 // ******  end 2809 ******
 
 // ****** Allosphere ******
-        SpeakerLayout alloLayout;
-        alloLayout = AlloSphereSpeakerLayout();
+        else if (location == 1){
+            SpeakerLayout alloLayout;
+            alloLayout = AlloSphereSpeakerLayout();
 
-        for(int i = 0; i < alloLayout.numSpeakers(); i++){
-            Speaker spk = alloLayout.speakers()[i];
-            if(spk.elevation == 0.0){
-                speakers.push_back(SpeakerV(spk.deviceChannel,spk.azimuth,0.0,0,5.0,0,0.0));
+            for(int i = 0; i < alloLayout.numSpeakers(); i++){
+                Speaker spk = alloLayout.speakers()[i];
+                if(spk.elevation == 0.0){
+                    //Allosphere azimuth increases clockwise
+                    speakers.push_back(SpeakerV(spk.deviceChannel,spk.azimuth* -1.0,0.0,0,5.0,0,0.0));
+                }
             }
         }
 
