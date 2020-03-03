@@ -422,6 +422,8 @@ public:
 
 vector<VirtualSource*> sources;
 
+
+
 class SpeakerV: public Speaker {
 public:
 
@@ -495,6 +497,17 @@ public:
 std::vector<SpeakerV> speakers;
 std::vector<SpeakerV*> enabledSpeakers;
 //Mat<2,double> matrix;
+
+
+//class SpeakerLayer {
+//    std::vector<SpeakerV> l_speakers;
+//    std::vector<SpeakerV*> l_enabledSpeakers;
+
+//    float elevation;
+
+//};
+
+//std::vector<SpeakerLayer> layers;
 
 bool speakerSort(SpeakerV const *first, SpeakerV const *second){
     return first->azimuth < second->azimuth;
