@@ -423,8 +423,6 @@ public:
 
 vector<VirtualSource*> sources;
 
-
-
 class SpeakerV: public Speaker {
 public:
 
@@ -499,7 +497,6 @@ public:
 //std::vector<SpeakerV*> enabledSpeakers;
 //Mat<2,double> matrix;
 
-
 class SpeakerLayer {
 public:
     std::vector<SpeakerV> l_speakers;
@@ -525,7 +522,7 @@ void initPanner(){
 
     //cout << "Speakers 0 enabled: " << layers[0].l_speakers[0].enabled->get() << endl;
 
-    cout << "initPanner()" << endl;
+    //cout << "initPanner()" << endl;
     enabledSpeakersLock.lock();
     for(SpeakerLayer &sl: layers){
        // sl.l_enabledSpeakersLock.lock();
@@ -866,7 +863,7 @@ public:
 //        });
 
         speakerDensity.registerChangeCallback([&](float val){
-            for(SpeakerLayer sl: layers){
+            for(SpeakerLayer& sl: layers){
                 for(int i = 0; i < sl.l_speakers.size(); i++){
                     SpeakerV v = sl.l_speakers[i];
                     if(v.deviceChannel != -1){
@@ -1332,9 +1329,7 @@ public:
 // ****** 2809 ******
         if(location == 0){
 
-            SpeakerLayer speakerLayer;// = SpeakerLayer();
-
-
+            SpeakerLayer speakerLayer;
             speakerLayer.elevation = 0.0;
 
             float startingAngle = 170.0f;
@@ -1370,7 +1365,6 @@ public:
             middle.elevation = 0.0;
             top.elevation = 41.0 * float(M_PI) / 180.f;
 
-
             for(int i = 0; i < alloLayout.numSpeakers(); i++){
                 Speaker spk = alloLayout.speakers()[i];
                 if(spk.elevation == -32.5){
@@ -1383,13 +1377,6 @@ public:
                     //Allosphere azimuth increases clockwise
                     top.l_speakers.push_back(SpeakerV(spk.deviceChannel,spk.azimuth* -1.0,spk.elevation,0,5.0,0,0.0));
                 }
-
-//            for(int i = 0; i < alloLayout.numSpeakers(); i++){
-//                Speaker spk = alloLayout.speakers()[i];
-//                if(spk.elevation == 0.0){
-//                    //Allosphere azimuth increases clockwise
-//                    speakers.push_back(SpeakerV(spk.deviceChannel,spk.azimuth* -1.0,0.0,0,5.0,0,0.0));
-//                }
             }
 
            layers.push_back(bottom);
@@ -1397,6 +1384,7 @@ public:
            layers.push_back(top);
 
         }
+//****** end Allosphere ******
 
 
 
@@ -1419,22 +1407,14 @@ public:
         initPanner();
 
         for(SpeakerLayer sl:layers){
-        for(int i = 0; i < sl.l_speakers.size(); i++){
-            parameterGUI << sl.l_speakers[i].enabled;
-            presets << *sl.l_speakers[i].enabled;
-            if((int) sl.l_speakers[i].deviceChannel > highestChannel){
-                highestChannel = sl.l_speakers[i].deviceChannel;
+            for(int i = 0; i < sl.l_speakers.size(); i++){
+                parameterGUI << sl.l_speakers[i].enabled;
+                presets << *sl.l_speakers[i].enabled;
+                if((int) sl.l_speakers[i].deviceChannel > highestChannel){
+                    highestChannel = sl.l_speakers[i].deviceChannel;
+                }
             }
         }
-        }
-
-        cout << "Layer 0 size: " << layers[0].l_speakers.size() << endl;
-
-//        for(SpeakerV s:speakers){
-//            if((int) s.deviceChannel > highestChannel){
-//                highestChannel = s.deviceChannel;
-//            }
-//        }
 
         audioIO().channelsOut(highestChannel + 1);
         audioIO().channelsOutDevice();
@@ -1447,35 +1427,37 @@ public:
         mSpeakerMesh.primitive(Mesh::LINES);
 
         uint32_t key = 0;
-        //uint32_t val = 0;
+        uint32_t val = 0;
 
         //TODO: this is for one source only, "ERROR convolution config failed" if > than 2 sources
         // MAXINP set to 64 in zita-convolver.h line 362
 
         for(int i = 0 ; i < sourcesToDecorrelate.get(); i++){
             vector<uint32_t> values;
-//            for(int j = 0; j < (highestChannel + 1); j++){
-//                values.push_back(val);
-//                val++;
-//            }
 
             for(SpeakerLayer &sl:layers){
-            for(int j = 0; j < sl.l_speakers.size(); j++){
-                if(!sl.l_speakers[j].isPhantom){
-                    values.push_back(sl.l_speakers[j].deviceChannel);
-                    cout << "Device chan: " << sl.l_speakers[j].deviceChannel << endl;
+                for(int j = 0; j < sl.l_speakers.size(); j++){
+                    if(!sl.l_speakers[j].isPhantom){
+                        //Values are from 0, number of speakers -1
+                        values.push_back(val);
+//                        values.push_back(sl.l_speakers[j].deviceChannel);
+//                        cout << "Device chan: " << sl.l_speakers[j].deviceChannel << endl;
+                        val++;
+                    }
                 }
-                //val++;
-            }
             }
             routingMap.insert(std::pair<uint32_t,vector<uint32_t>>(key,values));
-
-          key++;
+            key++;
         }
-        for(auto it = routingMap.cbegin(); it != routingMap.cend(); ++it)
-        {
-            std::cout << it->first << " " << it->second[0] << endl;
-            //std::cout << it->second << endl;
+
+        //Prints routing map
+        for(auto it = routingMap.cbegin(); it != routingMap.cend(); ++it){
+            std::cout << "Decorrelation input Channel: " << it->first << endl;
+            cout << "Values: " << endl;
+            for(auto sec: it->second){
+                cout<< sec << " ";
+            }
+            cout << endl;
         }
 
         decorrelation.configure(audioIO().framesPerBuffer(), routingMap,
@@ -1505,11 +1487,6 @@ public:
         //float srcBuffer[BLOCK_SIZE];
         float enabledSources = 0.0f;
         gam::Sync::master().spu(audioIO().fps());
-
-//        if(t == 0){
-//            cout << "IN ON SOUND" << endl;
-//        }
-
 
         if(soundOn.get()){
 
@@ -1641,7 +1618,6 @@ public:
 
         }
 
-  //      cout << "BEFORE PEAKS" << endl;
 //        for(SpeakerLayer sl:layers){
 //            for (int i = 0; i < sl.l_speakers.size(); i++) {
 //                mPeaks[sl.l_speakers[i].deviceChannel].store(0);
@@ -1651,30 +1627,26 @@ public:
             mPeaks[i].store(0);
         }
 
-       // cout << "AFTER PEAKS" << endl;
-
 //        for (int i = 0; i < speakers.size(); i++) {
 //            mPeaks[i].store(0);
 //        }
         for(SpeakerLayer sl:layers){
-        for (int speaker = 0; speaker < sl.l_speakers.size(); speaker++) {
-            if(!sl.l_speakers[speaker].isPhantom){
-                float rms = 0;
-                int deviceChannel = sl.l_speakers[speaker].deviceChannel;
+            for (int speaker = 0; speaker < sl.l_speakers.size(); speaker++) {
+                if(!sl.l_speakers[speaker].isPhantom){
+                    float rms = 0;
+                    int deviceChannel = sl.l_speakers[speaker].deviceChannel;
 
-                for (int i = 0; i < io.framesPerBuffer(); i++) {
-                    if(deviceChannel < io.channelsOut()) {
-                        float sample = io.out(deviceChannel, i);
-                        rms += sample * sample;
+                    for (int i = 0; i < io.framesPerBuffer(); i++) {
+                        if(deviceChannel < io.channelsOut()) {
+                            float sample = io.out(deviceChannel, i);
+                            rms += sample * sample;
+                        }
                     }
+                    rms = sqrt(rms/io.framesPerBuffer());
+                    mPeaks[deviceChannel].store(rms);
                 }
-                rms = sqrt(rms/io.framesPerBuffer());
-                mPeaks[deviceChannel].store(rms);
             }
         }
-        }
-
-
     }
 
     virtual void onDraw(Graphics &g) override {
@@ -1701,7 +1673,6 @@ public:
             Vec3d pos = ambiSphericalToOGLCart(v->aziInRad, v->elevation,radius);
             g.pushMatrix();
             g.translate(pos);
-
 
             if(drawLabels.get()){
                 //Draw Source Index
@@ -1745,48 +1716,47 @@ public:
 
         //Draw the speakers
         for(SpeakerLayer sl: layers){
-        for(int i = 0; i < sl.l_speakers.size(); ++i){
-            int devChan = sl.l_speakers[i].deviceChannel;
-            g.pushMatrix();
-            g.translate(sl.l_speakers[i].vecGraphics());
-
-
-            if(drawLabels.get()){
-                //Draw Speaker Channel
+            for(int i = 0; i < sl.l_speakers.size(); ++i){
+                int devChan = sl.l_speakers[i].deviceChannel;
                 g.pushMatrix();
-                g.translate(0.0,0.1,0.0);
-                if(!sl.l_speakers[i].isPhantom){
-                    font.write(fontMesh,sl.l_speakers[i].deviceChannelString.c_str(),0.2f);
-                }else{
-                    font.write(fontMesh,"P",0.2f);
+                g.translate(sl.l_speakers[i].vecGraphics());
+
+                if(drawLabels.get()){
+                    //Draw Speaker Channel
+                    g.pushMatrix();
+                    g.translate(0.0,0.1,0.0);
+                    if(!sl.l_speakers[i].isPhantom){
+                        font.write(fontMesh,sl.l_speakers[i].deviceChannelString.c_str(),0.2f);
+                    }else{
+                        font.write(fontMesh,"P",0.2f);
+                    }
+                    g.texture();
+                    font.tex.bind();
+                    g.draw(fontMesh);
+                    font.tex.unbind();
+                    g.popMatrix();
                 }
-                g.texture();
-                font.tex.bind();
-                g.draw(fontMesh);
-                font.tex.unbind();
+
+                float peak = 0.0;
+                if(!sl.l_speakers[i].isPhantom){
+                    peak = mPeaks[devChan].load();
+                }
+                g.scale(0.04 + peak * 6);
+
+                if(sl.l_speakers[i].isPhantom){
+                    g.color(0.0,1.0,0.0);
+                }else if(devChan == 0){
+                    g.color(1.0,0.0,0.0);
+                }else if(devChan == 1){
+                    g.color(0.0,0.0,1.0);
+                }else if(!sl.l_speakers[i].enabled->get()){
+                    g.color(0.05,0.05,0.05);
+                }else{
+                    g.color(1);
+                }
+                g.draw(mSpeakerMesh);
                 g.popMatrix();
             }
-
-            float peak = 0.0;
-            if(!sl.l_speakers[i].isPhantom){
-                peak = mPeaks[devChan].load();
-            }
-            g.scale(0.04 + peak * 6);
-
-            if(sl.l_speakers[i].isPhantom){
-                g.color(0.0,1.0,0.0);
-            }else if(devChan == 0){
-                g.color(1.0,0.0,0.0);
-            }else if(devChan == 1){
-                g.color(0.0,0.0,1.0);
-            }else if(!sl.l_speakers[i].enabled->get()){
-                g.color(0.05,0.05,0.05);
-            }else{
-            g.color(1);
-            }
-            g.draw(mSpeakerMesh);
-            g.popMatrix();
-        }
         }
         parameterGUI.draw(g);
     }
