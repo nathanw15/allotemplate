@@ -1196,23 +1196,25 @@ public:
 
 
 
-        }else if(vs->panMethod.get()==1){ //Skirt
+        }else if(vs->panMethod.get()==1 || vs->panMethod.get() == 2){ //Skirt and snap source width
 
             std::vector<float> gains(highestChannel+1,0.0);
-            //float gains[highestChannel+1];
             float gainsAccum = 0.0;
             float sample = 0.0f;
             if(!vs->decorrelateSrc.get()){
                 sample = vs->getSample();
             }
 
-
             for(SpeakerLayer& sl: layers){
                 for (int i = 0; i < sl.l_speakers.size(); i++){
-                    //gains[i] = 0.0;
                     if(!sl.l_speakers[i].isPhantom && sl.l_speakers[i].enabled->get()){
                         int speakerChannel = sl.l_speakers[i].deviceChannel;
                         float gain = calcSpeakerSkirtGains(vs->aziInRad, vs->elevation,vs->sourceWidth,sl.l_speakers[i].aziInRad, sl.elevation);
+
+                        if(vs->panMethod.get() == 2 && gain > 0.0){
+                            gain = 1.0;
+                        }
+
                         gains[speakerChannel] = gain;
                         gainsAccum += gain*gain;
                     }
@@ -1284,7 +1286,9 @@ public:
 //                }
 //            }
 
-        }else if(vs->panMethod.get() == 2){ // Snap Source Width
+        }
+
+//        else if(vs->panMethod.get() == 2){ // Snap Source Width
 //            float sample = 0.0f;
 //            float gainsAccum = 0.0;
 //            float gains[speakers.size()];
@@ -1326,9 +1330,41 @@ public:
 
 //            }
 
-        }
+//        }
 
         else if(vs->panMethod.get() == 3){ //Snap to Nearest Speaker
+            float smallestAngle = M_2PI;
+            int smallestAngleSpkIdx = -1;
+            int smallestAngleLayerIdx = -1;
+
+            int speakLayerIdx = 0;
+            for(SpeakerLayer& sl: layers){
+
+                for (int i = 0; i < sl.l_speakers.size(); i++){
+                    if(!sl.l_speakers[i].isPhantom && sl.l_speakers[i].enabled->get()){
+                        float angleDiff = getAbsAngleDiff(vs->aziInRad,sl.l_speakers[i].aziInRad) + getAbsAngleDiff(vs->elevation,sl.elevation);
+                        if(angleDiff < smallestAngle){
+                            smallestAngle = angleDiff;
+                            smallestAngleSpkIdx = i;
+                            smallestAngleLayerIdx = speakLayerIdx;
+                        }
+                    }
+                }
+                speakLayerIdx++;
+            }
+
+            if(smallestAngleSpkIdx != -1){
+                int speakerChannel = layers[smallestAngleLayerIdx].l_speakers[smallestAngleSpkIdx].deviceChannel;
+                float sample = 0.0f;
+                if(vs->decorrelateSrc.get()){
+                    sample = decorrelation.getOutputBuffer(speakerChannel)[io.frame()];
+                }else{
+                    sample = vs->getSample();
+                }
+                setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
+            }
+
+
 //            float smallestAngle = M_2PI;
 //            int smallestAngleSpkIdx = -1;
 //            for (int i = 0; i < speakers.size(); i++){
