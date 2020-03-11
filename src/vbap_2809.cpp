@@ -36,7 +36,7 @@ using namespace al;
 using namespace std;
 
 // 0 for 2809, 1 for Allosphere
-const int location = 0;
+const int location = 1;
 
 osc::Send sender(9011, "127.0.0.1");
 //ParameterServer paramServer("127.0.0.1",8080);
@@ -113,6 +113,7 @@ Trigger generateRandDecorSeed("generateRandDecorSeed","","");
 ParameterBool drawLabels("drawLabels","",1.0);
 
 int highestChannel = 0;
+int speakerCount = 0;
 
 mutex enabledSpeakersLock;
 
@@ -438,6 +439,8 @@ public:
 
     bool isPhantom = false;
 
+    int decorrelationOutputIdx = 0;
+
     SpeakerV(int chan, float az=0.f, float el=0.f, int gr=0, float rad=1.f, float ga=1.f, int del = 0){
         delay = del;
         readPos = 0;
@@ -523,11 +526,15 @@ void initPanner(){
     //cout << "Speakers 0 enabled: " << layers[0].l_speakers[0].enabled->get() << endl;
 
     //cout << "initPanner()" << endl;
+
+    //speakerCount = 0;
+
     enabledSpeakersLock.lock();
     for(SpeakerLayer &sl: layers){
        // sl.l_enabledSpeakersLock.lock();
         sl.l_enabledSpeakers.clear();
         for(int i = 0; i < sl.l_speakers.size(); i ++){
+            //speakerCount++;
             if(sl.l_speakers[i].enabled->get() > 0.5){
                 sl.l_enabledSpeakers.push_back(&sl.l_speakers[i]);
             }
@@ -536,6 +543,8 @@ void initPanner(){
         //sl.l_enabledSpeakersLock.unlock();
 
     }
+
+
 
     enabledSpeakersLock.unlock();
 
@@ -910,7 +919,7 @@ public:
     }
 
     //TODO: io not used here
-    Vec3d calcGains(SpeakerLayer &sl, const float &srcAzi, int &speakerChan1, int &speakerChan2){
+    Vec3d calcGains(SpeakerLayer &sl, const float &srcAzi, SpeakerV* &speakerChan1, SpeakerV* &speakerChan2){
 
         Vec3f ambiCartSrcPos = ambiSphericalToOGLCart(srcAzi,0.0,radius); //Disregard elevation
         openGLCartToAmbiCart(ambiCartSrcPos);
@@ -965,7 +974,9 @@ public:
             //cout << sl.l_enabledSpeakers.size() << endl;
             for(int i = 0; i < sl.l_enabledSpeakers.size(); i++){
 
-                speakerChan1 = sl.l_enabledSpeakers[i]->deviceChannel;
+//                speakerChan1 = sl.l_enabledSpeakers[i]->deviceChannel;
+                speakerChan1 = sl.l_enabledSpeakers[i];
+                //speakerChan1 = layers[0].l_enabledSpeakers[0];
 
                 int chan2Idx;
 
@@ -975,7 +986,8 @@ public:
                     chan2Idx = i+1;
                 }
 
-                speakerChan2 = sl.l_enabledSpeakers[chan2Idx]->deviceChannel;
+//                speakerChan2 = sl.l_enabledSpeakers[chan2Idx]->deviceChannel;
+                speakerChan2 = sl.l_enabledSpeakers[chan2Idx];
 
                 if(srcAzi == sl.l_enabledSpeakers[i]->aziInRad ){
                     gains.x = 1.0;
@@ -1011,7 +1023,8 @@ public:
            //enabledSpeakersLock.unlock();
 
         }else{
-            speakerChan1 = speakerChan2 = -1;
+//            speakerChan1 = speakerChan2 = -1;
+            speakerChan1 = speakerChan2 = nullptr;
         }
         return gains;
     }
@@ -1024,9 +1037,9 @@ public:
     }
 
 
-    float calcSpeakerSkirtGains(float srcAzi, float spkSkirtWidth, float skirtWidthMax, float spkAzi){
+    float calcSpeakerSkirtGains(float srcAzi, float srcElev, float spkSkirtWidth, float spkAzi, float spkElev){
         float gain = 0.0f;
-        float distanceToSpeaker = getAbsAngleDiff(srcAzi, spkAzi);
+        float distanceToSpeaker = getAbsAngleDiff(srcAzi, spkAzi) + getAbsAngleDiff(srcElev, spkElev);
         if(distanceToSpeaker <= spkSkirtWidth/2.0f){
             float p = ((2.0f*distanceToSpeaker)/(spkSkirtWidth/2.0f))-1.0f;
             gain = cos((M_PI*(p+1))/4.0f);
@@ -1153,27 +1166,29 @@ public:
             for(int i = 0; i < layers.size(); i++){
 
                 if(layerGains[i] > 0.0){
+                    SpeakerV *speaker1;
+                    SpeakerV *speaker2;
 
-                    int speakerChan1, speakerChan2;
-                    Vec3d gains = calcGains(layers[i],vs->aziInRad, speakerChan1, speakerChan2);
-                    //cout << gains[0] << endl;
+                    Vec3d gains = calcGains(layers[i],vs->aziInRad, speaker1, speaker2);
+
                     gains[0] *= layerGains[i];
                     gains[1] *= layerGains[i];
                     float sampleOut1, sampleOut2;
-//                    cout << gains[0] << endl;
+
                     if(vs->decorrelateSrc.get()){
-                        if(speakerChan1 != -1){
-                            sampleOut1 = decorrelation.getOutputBuffer(speakerChan1+outputBufferOffset)[io.frame()];
-                            setOutput(io,speakerChan1,io.frame(),sampleOut1 * gains[0] * xFadeGain);
+                        if(speaker1 != nullptr){
+                            sampleOut1 = decorrelation.getOutputBuffer(speaker1->decorrelationOutputIdx)[io.frame()];
+                            setOutput(io,speaker1->deviceChannel,io.frame(),sampleOut1 * gains[0] * xFadeGain);
                         }
-                        if(speakerChan2 != -1){
-                            sampleOut2 = decorrelation.getOutputBuffer(speakerChan2+outputBufferOffset)[io.frame()];
-                            setOutput(io,speakerChan2,io.frame(),sampleOut2 * gains[1] * xFadeGain);
+                        if(speaker2 != nullptr){
+                            sampleOut2 = decorrelation.getOutputBuffer(speaker2->decorrelationOutputIdx)[io.frame()];
+                            setOutput(io,speaker2->deviceChannel,io.frame(),sampleOut2 * gains[1] * xFadeGain);
                         }
                     } else{ // don't decorrelate
                         //float sample = vs->getSample();
-                        setOutput(io,speakerChan1,io.frame(),sample * gains[0] * xFadeGain);
-                        setOutput(io,speakerChan2,io.frame(),sample * gains[1] * xFadeGain);
+                        //cout << speaker1->deviceChannel << endl;
+                        setOutput(io,speaker1->deviceChannel,io.frame(),sample * gains[0] * xFadeGain);
+                        setOutput(io,speaker2->deviceChannel,io.frame(),sample * gains[1] * xFadeGain);
                     }
                 }
 
@@ -1182,6 +1197,55 @@ public:
 
 
         }else if(vs->panMethod.get()==1){ //Skirt
+
+            std::vector<float> gains(highestChannel+1,0.0);
+            //float gains[highestChannel+1];
+            float gainsAccum = 0.0;
+            float sample = 0.0f;
+            if(!vs->decorrelateSrc.get()){
+                sample = vs->getSample();
+            }
+
+
+            for(SpeakerLayer& sl: layers){
+                for (int i = 0; i < sl.l_speakers.size(); i++){
+                    //gains[i] = 0.0;
+                    if(!sl.l_speakers[i].isPhantom && sl.l_speakers[i].enabled->get()){
+                        int speakerChannel = sl.l_speakers[i].deviceChannel;
+                        float gain = calcSpeakerSkirtGains(vs->aziInRad, vs->elevation,vs->sourceWidth,sl.l_speakers[i].aziInRad, sl.elevation);
+                        gains[speakerChannel] = gain;
+                        gainsAccum += gain*gain;
+                    }
+                }
+            }
+
+            float gainScaleFactor = 1.0;
+            if(vs->scaleSrcWidth.get()){
+                if(!gainsAccum == 0.0){
+                    gainScaleFactor = sqrt(gainsAccum);
+                }
+            }
+
+            for(SpeakerLayer& sl: layers){
+                for (int i = 0; i < sl.l_speakers.size(); i++){
+                    if(!sl.l_speakers[i].isPhantom && sl.l_speakers[i].enabled->get()){
+                        int speakerChannel = sl.l_speakers[i].deviceChannel;
+                        if(vs->decorrelateSrc.get()){
+//                            sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
+                            sample = decorrelation.getOutputBuffer(sl.l_speakers[i].decorrelationOutputIdx)[io.frame()];
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain);
+
+                        }else{
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain);
+                        }
+                    }
+                }
+            }
+
+
+
+//            Vec3f a;
+//            Vec3f b;
 
 //            float gains[speakers.size()];
 //            float gainsAccum = 0.0;
@@ -1407,6 +1471,7 @@ public:
         initPanner();
 
         for(SpeakerLayer sl:layers){
+            speakerCount += sl.l_speakers.size();
             for(int i = 0; i < sl.l_speakers.size(); i++){
                 parameterGUI << sl.l_speakers[i].enabled;
                 presets << *sl.l_speakers[i].enabled;
@@ -1423,8 +1488,9 @@ public:
 
         mPeaks = new atomic<float>[highestChannel + 1];
 
-        addSphere(mSpeakerMesh, 1.0, 5, 5);
-        mSpeakerMesh.primitive(Mesh::LINES);
+        addSphere(mSpeakerMesh, 1.0, 16, 16);
+//        mSpeakerMesh.primitive(Mesh::LINES);
+        mSpeakerMesh.primitive(Mesh::TRIANGLES);
 
         uint32_t key = 0;
         uint32_t val = 0;
@@ -1439,6 +1505,7 @@ public:
                 for(int j = 0; j < sl.l_speakers.size(); j++){
                     if(!sl.l_speakers[j].isPhantom){
                         //Values are from 0, number of speakers -1
+                        sl.l_speakers[j].decorrelationOutputIdx = val;
                         values.push_back(val);
 //                        values.push_back(sl.l_speakers[j].deviceChannel);
 //                        cout << "Device chan: " << sl.l_speakers[j].deviceChannel << endl;
