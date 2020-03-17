@@ -347,7 +347,10 @@ public:
             break;
         }
         case 3:{
-            aziInRad.set(centerAzi + (positionOsc() * posOscAmp.get()));
+            float temp = centerAzi + (positionOsc() * posOscAmp.get());
+            wrapValues(temp); //wrapValues is also called by aziInRad callback...
+            aziInRad.set(temp);
+//            aziInRad.set(centerAzi + (positionOsc() * posOscAmp.get()));
         }
         default:
             break;
@@ -590,6 +593,7 @@ public:
 
     MyApp()
     {
+
         searchpaths.addAppPaths();
         searchpaths.addRelativePath("src/sounds");
 
@@ -1126,6 +1130,7 @@ public:
             if(layers.size() > 1){
                 if(vs->elevation < layers[0].elevation){
                     //Source is below bottom ring
+                    layerGains[0] = 1.0;
                 }else{
                     for(int i = 0; i < layers.size(); i++){
 
@@ -1135,6 +1140,7 @@ public:
                         }else if(i == layers.size()-1){
                             if( layers[i].elevation < vs->elevation){
                                 //Source is over top ring
+                                layerGains[layers.size()-1] = 1.0;
                                 break;
                             }
                         } else if((layers[i].elevation < vs->elevation) && (vs->elevation < layers[i+1].elevation)){
