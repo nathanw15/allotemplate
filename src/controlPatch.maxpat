@@ -8,7 +8,7 @@
 			"architecture" : "x64"
 		}
 ,
-		"rect" : [ 220.0, 45.0, 891.0, 725.0 ],
+		"rect" : [ 166.0, 72.0, 891.0, 725.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -32,13 +32,57 @@
 					"fontname" : "Arial",
 					"fontsize" : 12.0,
 					"frgb" : 0.0,
+					"id" : "obj-156",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 32.0, 929.0, 150.0, 20.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 58.0, 370.0, 150.0, 20.0 ],
+					"text" : "Reset posOscPhase"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-158",
+					"maxclass" : "button",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "bang" ],
+					"patching_rect" : [ 17.0, 929.0, 20.0, 20.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 29.0, 370.0, 20.0, 20.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-159",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 17.0, 949.0, 130.0, 18.0 ],
+					"presentation_rect" : [ 22.0, 949.0, 0.0, 0.0 ],
+					"text" : "/resetPosOscPhase 1."
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"frgb" : 0.0,
 					"id" : "obj-147",
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 578.25, 1476.0, 89.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 165.25, 689.0, 69.5, 20.0 ],
+					"presentation_rect" : [ 158.25, 726.0, 69.5, 20.0 ],
 					"text" : "phaseDev"
 				}
 
@@ -69,7 +113,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 442.0, 1476.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 689.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 726.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[15]",
@@ -128,7 +172,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 850.25, 1489.0, 89.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 165.25, 663.0, 69.5, 20.0 ],
+					"presentation_rect" : [ 158.25, 700.0, 69.5, 20.0 ],
 					"text" : "startPhase"
 				}
 
@@ -159,7 +203,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 714.0, 1489.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 663.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 700.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[14]",
@@ -218,7 +262,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 838.25, 1327.0, 89.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 165.25, 639.0, 69.5, 20.0 ],
+					"presentation_rect" : [ 158.25, 676.0, 69.5, 20.0 ],
 					"text" : "maxTau"
 				}
 
@@ -249,7 +293,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 702.0, 1327.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 639.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 676.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[12]",
@@ -308,7 +352,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 850.25, 1190.0, 89.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 165.25, 613.0, 79.5, 20.0 ],
+					"presentation_rect" : [ 158.25, 650.0, 79.5, 20.0 ],
 					"text" : "maxFreqDev"
 				}
 
@@ -339,7 +383,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 714.0, 1190.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 613.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 650.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[11]",
@@ -398,7 +442,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 590.25, 1190.0, 69.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 171.125, 587.0, 69.5, 20.0 ],
+					"presentation_rect" : [ 164.125, 624.0, 69.5, 20.0 ],
 					"text" : "delta Freq"
 				}
 
@@ -429,7 +473,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 454.0, 1190.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 587.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 624.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[10]",
@@ -517,7 +561,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 523.0, 1083.0, 150.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 128.0, 502.0, 150.0, 20.0 ],
+					"presentation_rect" : [ 121.0, 539.0, 150.0, 20.0 ],
 					"text" : "Decorrelation Method"
 				}
 
@@ -535,7 +579,7 @@
 					"parameter_enable" : 0,
 					"patching_rect" : [ 424.0, 1083.0, 100.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 502.0, 100.0, 20.0 ]
+					"presentation_rect" : [ 22.0, 539.0, 100.0, 20.0 ]
 				}
 
 			}
@@ -550,7 +594,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 210.25, 1203.0, 96.75, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 157.5, 558.0, 96.75, 20.0 ],
+					"presentation_rect" : [ 150.5, 595.0, 96.75, 20.0 ],
 					"text" : "Phase Factor"
 				}
 
@@ -581,7 +625,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 74.0, 1203.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 558.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 595.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[9]",
@@ -640,7 +684,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 210.25, 1093.0, 69.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 163.25, 530.0, 69.5, 20.0 ],
+					"presentation_rect" : [ 156.25, 567.0, 69.5, 20.0 ],
 					"text" : "Max Jump"
 				}
 
@@ -728,7 +772,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 74.0, 1093.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 530.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 22.0, 567.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[8]",
@@ -785,7 +829,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 32.0, 847.0, 150.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 44.0, 475.0, 150.0, 20.0 ],
+					"presentation_rect" : [ 37.0, 512.0, 150.0, 20.0 ],
 					"text" : "Generate Random Seed"
 				}
 
@@ -799,7 +843,7 @@
 					"outlettype" : [ "bang" ],
 					"patching_rect" : [ 17.0, 847.0, 20.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 29.0, 475.0, 20.0, 20.0 ]
+					"presentation_rect" : [ 22.0, 512.0, 20.0, 20.0 ]
 				}
 
 			}
@@ -910,7 +954,7 @@
 					"fontname" : "Arial",
 					"fontsize" : 12.0,
 					"id" : "obj-104",
-					"items" : [ ".DS_Store", ",", "bird-chirping.wav", ",", "count.wav", ",", "devSamples.wav", ",", "guitar-overdrive-rif.wav", ",", "hornPhase.wav", ",", "midiPiano.wav", ",", "pianoA.wav", ",", "pianoABCD.wav", ",", "pianoB.wav", ",", "pianoC.wav", ",", "pianoD.wav", ",", "pizzPhase.wav", ",", "shortCount.wav", ",", "tamborine.aiff" ],
+					"items" : [ ".DS_Store", ",", "bird-chirping.wav", ",", "count.wav", ",", "devSamples.wav", ",", "guitar-overdrive-rif.wav", ",", "hornPhase.wav", ",", "joe_no_no_no.wav", ",", "midiPiano.wav", ",", "pianoA.wav", ",", "pianoABCD.wav", ",", "pianoB.wav", ",", "pianoC.wav", ",", "pianoD.wav", ",", "pizzPhase.wav", ",", "shortCount.wav", ",", "tamborine.aiff" ],
 					"maxclass" : "umenu",
 					"numinlets" : 1,
 					"numoutlets" : 3,
@@ -1976,7 +2020,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 612.0, 798.0, 150.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 62.0, 407.0, 150.0, 20.0 ],
+					"presentation_rect" : [ 55.0, 444.0, 150.0, 20.0 ],
 					"text" : "xFadeCh1_2"
 				}
 
@@ -1993,7 +2037,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 499.5, 929.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 435.0, 134.0, 19.0 ],
+					"presentation_rect" : [ 24.0, 472.0, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[7]",
@@ -2022,7 +2066,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 633.5, 929.0, 129.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 172.0, 435.0, 113.0, 20.0 ],
+					"presentation_rect" : [ 165.0, 472.0, 113.0, 20.0 ],
 					"text" : "xFade Value"
 				}
 
@@ -2093,7 +2137,7 @@
 					"parameter_enable" : 0,
 					"patching_rect" : [ 588.0, 800.0, 20.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 409.0, 20.0, 20.0 ]
+					"presentation_rect" : [ 24.0, 446.0, 20.0, 20.0 ]
 				}
 
 			}
@@ -2546,7 +2590,7 @@
 					"fontname" : "Arial",
 					"fontsize" : 12.0,
 					"id" : "obj-155",
-					"items" : [ "off", ",", "trajectory", ",", "moving" ],
+					"items" : [ "off", ",", "trajectory", ",", "moving", ",", "Sine" ],
 					"maxclass" : "umenu",
 					"numinlets" : 1,
 					"numoutlets" : 3,
@@ -2583,7 +2627,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 1394.0, 577.5, 174.0, 282.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 887.5, 41.0, 182.0, 405.0 ]
+					"presentation_rect" : [ 887.5, 41.0, 182.0, 445.0 ]
 				}
 
 			}
@@ -2598,7 +2642,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 1203.0, 577.5, 174.0, 282.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 696.0, 41.0, 182.0, 414.0 ]
+					"presentation_rect" : [ 696.0, 41.0, 182.0, 454.0 ]
 				}
 
 			}
@@ -2614,7 +2658,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ -41.0, 598.0, 134.0, 19.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 368.5, 134.0, 19.0 ],
+					"presentation_rect" : [ 24.0, 405.5, 134.0, 19.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_longname" : "multislider[6]",
@@ -2643,7 +2687,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 93.0, 598.0, 129.5, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 172.0, 368.5, 113.0, 20.0 ],
+					"presentation_rect" : [ 165.0, 405.5, 113.0, 20.0 ],
 					"text" : "Set Player Phase"
 				}
 
@@ -2771,7 +2815,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 1010.5, 577.5, 174.0, 282.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 508.0, 41.0, 182.0, 414.0 ]
+					"presentation_rect" : [ 508.0, 41.0, 182.0, 454.0 ]
 				}
 
 			}
@@ -2786,7 +2830,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 817.0, 577.5, 210.5, 348.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 322.0, 41.0, 182.0, 414.0 ]
+					"presentation_rect" : [ 322.0, 41.0, 182.0, 454.0 ]
 				}
 
 			}
@@ -3930,6 +3974,24 @@
 					"disabled" : 0,
 					"hidden" : 0,
 					"source" : [ "obj-155", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-159", 0 ],
+					"disabled" : 0,
+					"hidden" : 0,
+					"source" : [ "obj-158", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-81", 0 ],
+					"disabled" : 0,
+					"hidden" : 0,
+					"source" : [ "obj-159", 0 ]
 				}
 
 			}

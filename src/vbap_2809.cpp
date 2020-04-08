@@ -50,7 +50,7 @@ Parameter masterGain("masterGain","",0.5,"",0.0,1.0);
 ParameterBool soundOn("soundOn","",0.0);
 
 PresetHandler presets("data/presets");
-PresetHandler srcPresets("data/srcPresets");
+//PresetHandler srcPresets("data/srcPresets");
 
 SearchPaths searchpaths;
 
@@ -319,7 +319,7 @@ public:
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
         vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad << elevation   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
-        srcPresets << vsBundle;
+        //srcPresets << vsBundle;
     }
 
 //    void updateEnabledSpeakers(){
@@ -607,7 +607,7 @@ public:
         }
 
         parameterGUI << soundOn << masterGain << resetSamples << resetPosOscPhase << sampleWise  << combineAllChannels << xFadeCh1_2 << xFadeValue << sourcesToDecorrelate << decorrelationMethod << generateRandDecorSeed << maxJump << phaseFactor << deltaFreq << maxFreqDev << maxTau << startPhase << phaseDev << speakerDensity << drawLabels;
-        parameterGUI << srcPresets;
+        //parameterGUI << srcPresets;
         xsetAllBundle << setAllEnabled << setAllDecorrelate << setAllPanMethod << setAllPosUpdate << setAllSoundFileIdx <<setAllAzimuth << azimuthSpread << setAllRatesToOne << setPlayerPhase << triggerAllRamps << setAllStartAzi << setAllEndAzi << setAllDurations << setPiano << setMidiPiano;
         parameterGUI << xsetAllBundle;
 
@@ -674,13 +674,13 @@ public:
         startPhase.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
         phaseDev.registerChangeCallback([&](float val){configureDecorrelation.set(1.0);});
 
-        setMorphTime.registerChangeCallback([&](float val){
-            srcPresets.setMorphTime(val);
-        });
+//        setMorphTime.registerChangeCallback([&](float val){
+//            srcPresets.setMorphTime(val);
+//        });
 
-        recallPreset.registerChangeCallback([&](float val){
-            srcPresets.recallPreset(val);
-        });
+//        recallPreset.registerChangeCallback([&](float val){
+//            srcPresets.recallPreset(val);
+//        });
 
         resetPosOscPhase.registerChangeCallback([&](float val){
             for(VirtualSource *v: sources){
