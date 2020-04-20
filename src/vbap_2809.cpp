@@ -200,7 +200,13 @@ public:
     Parameter posOscFreq{"posOscFreq","",1.0,"",0.0,5.0};
     Parameter posOscAmp{"posOscAmp","",1.0,"",0.0,M_PI};
 
-    float centerAzi = 0.0;
+    Parameter centerAzi{"centerAzi","",0.0,"",-1.0*M_PI,M_PI};// = 0.0;
+    Parameter aziOffset{"aziOffset","",0.0,"",-1.0,1.0};
+    Parameter aziOffsetScale{"aziOffsetScale","",0.0,"",-1.0*M_PI,M_PI};
+
+    Parameter centerEle{"centerEle","",0.0,"",-1.0*M_PI_2,M_PI_2};// = 0.0;
+    Parameter eleOffset{"eleOffset","",0.0,"",-1.0,1.0};
+    Parameter eleOffsetScale{"eleOffsetScale","",0.0,"",-1.0*M_PI,M_PI};
 
     Ramp sourceRamp;
 
@@ -240,6 +246,9 @@ public:
 
     VirtualSource(){
 
+        aziOffset.set( -1.0 + 2.0 * ((float)rand()) / RAND_MAX);
+        eleOffset.set( -1.0 + 2.0 * ((float)rand()) / RAND_MAX);
+
         angularFreq.set(angFreqCycles.get()*M_2PI);
         osc.freq(oscFreq.get());
         impulse.freq(oscFreq.get());
@@ -261,12 +270,52 @@ public:
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
         sourceRamp.rampDuration = rampDuration.get();
 
-        positionUpdate.registerChangeCallback([&](float val){
-            if(val == 3){
-                cout << "Setting Center Azi" << endl;
-                centerAzi = aziInRad.get();
-            }
+        centerAzi.registerChangeCallback([&](float val){
+            val += aziOffset*aziOffsetScale;
+            wrapValues(val);
+           aziInRad = val;
         });
+
+        aziOffset.registerChangeCallback([&](float val){
+            val *= aziOffsetScale;
+            val += centerAzi;
+            wrapValues(val);
+           aziInRad = val;
+        });
+
+        aziOffsetScale.registerChangeCallback([&](float val){
+           val *= aziOffset;
+           val += centerAzi;
+           wrapValues(val);
+          aziInRad = val;
+        });
+
+        centerEle.registerChangeCallback([&](float val){
+            val += eleOffset*eleOffsetScale;
+
+           elevation = val;
+        });
+
+        eleOffset.registerChangeCallback([&](float val){
+            val *= eleOffsetScale;
+            val += centerEle;
+            //wrapValues(val);
+           elevation = val;
+        });
+
+        eleOffsetScale.registerChangeCallback([&](float val){
+           val *= eleOffset;
+           val += centerEle;
+           //wrapValues(val);
+          elevation = val;
+        });
+
+//        positionUpdate.registerChangeCallback([&](float val){
+//            if(val == 3){
+//                cout << "Setting Center Azi" << endl;
+//                centerAzi = aziInRad.get();
+//            }
+//        });
 
         posOscPhase.registerChangeCallback([&](float val){
             positionOsc.phase(val);
@@ -318,7 +367,7 @@ public:
         });
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << aziInRad << elevation   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
+        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << centerAzi << aziOffset << aziOffsetScale << centerEle << eleOffset << eleOffsetScale   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
         //srcPresets << vsBundle;
     }
 
@@ -347,7 +396,7 @@ public:
             break;
         }
         case 3:{
-            float temp = centerAzi + (positionOsc() * posOscAmp.get());
+            float temp = centerAzi + (aziOffset* aziOffsetScale) + (positionOsc() * posOscAmp.get());
             wrapValues(temp); //wrapValues is also called by aziInRad callback...
             aziInRad.set(temp);
 //            aziInRad.set(centerAzi + (positionOsc() * posOscAmp.get()));
