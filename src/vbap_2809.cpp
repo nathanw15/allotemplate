@@ -244,6 +244,9 @@ public:
 
     ParameterBool scaleSrcWidth{"scaleSrcWidth","",0};
 
+    Parameter soundFileStartPhase{"soundFileStartPhase","",0.0,"",0.0,1.0};
+    Parameter soundFilePeriod{"soundFilePeriod","",1.0,"",0.0,1.0};
+
     VirtualSource(){
 
         aziOffset.set( -1.0 + 2.0 * ((float)rand()) / RAND_MAX);
@@ -266,9 +269,20 @@ public:
 //        samplePlayer.rate(samplePlayerRate.get());
         samplePlayer.rate(1.0);
 
+        soundFilePeriod.max(samplePlayer.period());
+       // samplePlayer.min();
+
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
         sourceRamp.rampDuration = rampDuration.get();
+
+        soundFileStartPhase.registerChangeCallback([&](float val){
+            samplePlayer.range(val,soundFilePeriod);
+        });
+
+        soundFilePeriod.registerChangeCallback([&](float val){
+            samplePlayer.range(soundFileStartPhase,val);
+        });
 
         centerAzi.registerChangeCallback([&](float val){
             val += aziOffset*aziOffsetScale;
@@ -347,6 +361,13 @@ public:
 
         fileMenu.registerChangeCallback([&](float val){
             samplePlayer.load(searchpaths.find(files[val]).filepath().c_str());
+            soundFilePeriod.max(samplePlayer.period());
+//            bool didLoad = samplePlayer.load(searchpaths.find(files[val]).filepath().c_str());
+//            if(didLoad){
+//                cout << "Did Load " << samplePlayer.period()  << endl;
+
+//                soundFilePeriod.max(samplePlayer.period());
+//            }
         });
 
         triggerRamp.registerChangeCallback([&](float val){
@@ -367,7 +388,7 @@ public:
         });
 
 //        vsBundle << enabled << sourceGain << aziInRad << positionUpdate << fileMenu << samplePlayerRate << triggerRamp << sourceRamp.rampStartAzimuth << sourceRamp.rampEndAzimuth << sourceRamp.rampDuration << angularFreq;
-        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu << sourceGain << centerAzi << aziOffset << aziOffsetScale << centerEle << eleOffset << eleOffsetScale   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
+        vsBundle << enabled << mute << decorrelateSrc << invert << panMethod << positionUpdate << sourceSound <<  fileMenu  << soundFileStartPhase << soundFilePeriod << sourceGain << centerAzi << aziOffset << aziOffsetScale << centerEle << eleOffset << eleOffsetScale   << samplePlayerRate  << angularFreq << angFreqCycles << oscFreq  << scaleSrcWidth << sourceWidth << fadeDuration << posOscFreq << posOscAmp << posOscPhase;
         //srcPresets << vsBundle;
     }
 
