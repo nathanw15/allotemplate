@@ -266,11 +266,8 @@ public:
         fileMenu.setElements(files);
         samplePlayer.load("src/sounds/count.wav");
         samplePlayerRate.set(1.0 + (.002 * vsBundle.bundleIndex()));
-//        samplePlayer.rate(samplePlayerRate.get());
         samplePlayer.rate(1.0);
-
         soundFilePeriod.max(samplePlayer.period());
-       // samplePlayer.min();
 
         sourceRamp.rampStartAzimuth = rampStartAzimuth.get();
         sourceRamp.rampEndAzimuth = rampEndAzimuth.get();
@@ -501,6 +498,7 @@ class SpeakerV: public Speaker {
 public:
 
     ParameterBool *enabled;
+    Parameter *speakerGain;//{"speakerGain","",1.0,"",0.0,1.0};
     std::string oscTag;
     std::string deviceChannelString;
     float aziInRad;
@@ -536,6 +534,9 @@ public:
         enabled->registerChangeCallback([&](bool b){
             initPanner(); //TODO: enabled is set after this. initPanner Should be called after this callback not in it.
         });
+
+        string gainTag = "speaker" + deviceChannelString + "/speakerGain";
+        speakerGain = new Parameter(gainTag,"",1.0,"",0.0,1.0);
         //paramServer.registerParameter(*enabled);
     }
 
@@ -596,29 +597,16 @@ bool speakerSort(SpeakerV const *first, SpeakerV const *second){
 
 void initPanner(){
 
-    //cout << "Speakers 0 enabled: " << layers[0].l_speakers[0].enabled->get() << endl;
-
-    //cout << "initPanner()" << endl;
-
-    //speakerCount = 0;
-
     enabledSpeakersLock.lock();
     for(SpeakerLayer &sl: layers){
-       // sl.l_enabledSpeakersLock.lock();
         sl.l_enabledSpeakers.clear();
         for(int i = 0; i < sl.l_speakers.size(); i ++){
-            //speakerCount++;
             if(sl.l_speakers[i].enabled->get() > 0.5){
                 sl.l_enabledSpeakers.push_back(&sl.l_speakers[i]);
             }
         }
         std::sort(sl.l_enabledSpeakers.begin(),sl.l_enabledSpeakers.end(),&speakerSort);
-        //sl.l_enabledSpeakersLock.unlock();
-
     }
-
-
-
     enabledSpeakersLock.unlock();
 
 
@@ -1254,17 +1242,17 @@ public:
                     if(vs->decorrelateSrc.get()){
                         if(speaker1 != nullptr){
                             sampleOut1 = decorrelation.getOutputBuffer(speaker1->decorrelationOutputIdx)[io.frame()];
-                            setOutput(io,speaker1->deviceChannel,io.frame(),sampleOut1 * gains[0] * xFadeGain);
+                            setOutput(io,speaker1->deviceChannel,io.frame(),sampleOut1 * gains[0] * xFadeGain * speaker1->speakerGain->get());
                         }
                         if(speaker2 != nullptr){
                             sampleOut2 = decorrelation.getOutputBuffer(speaker2->decorrelationOutputIdx)[io.frame()];
-                            setOutput(io,speaker2->deviceChannel,io.frame(),sampleOut2 * gains[1] * xFadeGain);
+                            setOutput(io,speaker2->deviceChannel,io.frame(),sampleOut2 * gains[1] * xFadeGain * speaker2->speakerGain->get());
                         }
                     } else{ // don't decorrelate
                         //float sample = vs->getSample();
                         //cout << speaker1->deviceChannel << endl;
-                        setOutput(io,speaker1->deviceChannel,io.frame(),sample * gains[0] * xFadeGain);
-                        setOutput(io,speaker2->deviceChannel,io.frame(),sample * gains[1] * xFadeGain);
+                        setOutput(io,speaker1->deviceChannel,io.frame(),sample * gains[0] * xFadeGain * speaker1->speakerGain->get());
+                        setOutput(io,speaker2->deviceChannel,io.frame(),sample * gains[1] * xFadeGain * speaker2->speakerGain->get());
                     }
                 }
 
@@ -1291,6 +1279,7 @@ public:
                             gain = 1.0;
                         }
 
+                        //TODO: speakerGain not used here
                         gains[speakerChannel] = gain;
                         gainsAccum += gain*gain;
                     }
@@ -1308,13 +1297,14 @@ public:
                 for (int i = 0; i < sl.l_speakers.size(); i++){
                     if(!sl.l_speakers[i].isPhantom && sl.l_speakers[i].enabled->get()){
                         int speakerChannel = sl.l_speakers[i].deviceChannel;
+                        float spkGain = sl.l_speakers[i].speakerGain->get();
                         if(vs->decorrelateSrc.get()){
 //                            sample = decorrelation.getOutputBuffer(speakerChannel + outputBufferOffset)[io.frame()];
                             sample = decorrelation.getOutputBuffer(sl.l_speakers[i].decorrelationOutputIdx)[io.frame()];
-                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain);
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain * spkGain);
 
                         }else{
-                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain);
+                            setOutput(io,speakerChannel,io.frame(),sample * (gains[speakerChannel] / gainScaleFactor) * xFadeGain * spkGain);
                         }
                     }
                 }
@@ -1431,13 +1421,14 @@ public:
 
             if(smallestAngleSpkIdx != -1){
                 int speakerChannel = layers[smallestAngleLayerIdx].l_speakers[smallestAngleSpkIdx].deviceChannel;
+                float spkGain = layers[smallestAngleLayerIdx].l_speakers[smallestAngleSpkIdx].speakerGain->get();
                 float sample = 0.0f;
                 if(vs->decorrelateSrc.get()){
                     sample = decorrelation.getOutputBuffer(speakerChannel)[io.frame()];
                 }else{
                     sample = vs->getSample();
                 }
-                setOutput(io,speakerChannel,io.frame(),sample * xFadeGain);
+                setOutput(io,speakerChannel,io.frame(),sample * xFadeGain * spkGain);
             }
 
 
@@ -1582,16 +1573,37 @@ public:
 
         initPanner();
 
-        for(SpeakerLayer sl:layers){
+//        for(SpeakerLayer &sl: layers){
+//            sl.l_enabledSpeakers.clear();
+//            for(int i = 0; i < sl.l_speakers.size(); i ++){
+//                if(sl.l_speakers[i].enabled->get() > 0.5){
+//                    sl.l_enabledSpeakers.push_back(&sl.l_speakers[i]);
+//                }
+//            }
+//            std::sort(sl.l_enabledSpeakers.begin(),sl.l_enabledSpeakers.end(),&speakerSort);
+//        }
+
+        for(SpeakerLayer &sl:layers){
             speakerCount += sl.l_speakers.size();
             for(int i = 0; i < sl.l_speakers.size(); i++){
-                parameterGUI << sl.l_speakers[i].enabled;
+                parameterGUI << sl.l_speakers[i].enabled  << sl.l_speakers[i].speakerGain;
                 presets << *sl.l_speakers[i].enabled;
                 if((int) sl.l_speakers[i].deviceChannel > highestChannel){
                     highestChannel = sl.l_speakers[i].deviceChannel;
                 }
             }
         }
+
+//        for(SpeakerLayer sl:layers){
+//            speakerCount += sl.l_speakers.size();
+//            for(int i = 0; i < sl.l_speakers.size(); i++){
+//                parameterGUI << sl.l_speakers[i].enabled; // << sl.l_speakers[i].speakerGain;
+//                presets << *sl.l_speakers[i].enabled;
+//                if((int) sl.l_speakers[i].deviceChannel > highestChannel){
+//                    highestChannel = sl.l_speakers[i].deviceChannel;
+//                }
+//            }
+//        }
 
         audioIO().channelsOut(highestChannel + 1);
         audioIO().channelsOutDevice();
