@@ -1869,6 +1869,7 @@ public:
                 //Draw Source Index
                 g.pushMatrix();
                 g.color(1);
+               // g.color(0.0,0.0,1.0);
                 g.translate(0.0,0.3,0.0);
                 font.write(fontMesh,std::to_string(v->vsBundle.bundleIndex()).c_str(),0.2f);
                 g.texture();
@@ -1878,28 +1879,35 @@ public:
                 g.popMatrix();
             }
 
-            g.scale(0.3);
-            g.color(0.4,0.4, 0.4, 0.5);
+            g.scale(0.1);
+            g.color(0.0,0.0, 1.0, 1.0);
             g.draw(mSpeakerMesh);
             g.popMatrix();
 
-            g.pushMatrix();
-            g.translate(v->getSamplePlayerPhase(),2.0 + v->vsBundle.bundleIndex()*0.25,0.0);
-            g.scale(0.3);
-            g.draw(mSpeakerMesh);
-            g.popMatrix();
+//            g.pushMatrix();
+//            g.translate(v->getSamplePlayerPhase(),2.0 + v->vsBundle.bundleIndex()*0.25,0.0);
+//            g.scale(0.3);
+//            g.draw(mSpeakerMesh);
+//            g.popMatrix();
 
             // Draw line
             Mesh lineMesh;
+//            lineMesh.vertex(0.0,0.0, 0.0);
+//            lineMesh.vertex(pos.x,0.0, pos.z);
+//            lineMesh.vertex(pos);
+//            lineMesh.index(0);
+//            lineMesh.index(1);
+//            lineMesh.index(1);
+//            lineMesh.index(2);
+//            lineMesh.index(2);
+//            lineMesh.index(0);
+//            lineMesh.primitive(Mesh::LINES);
+//            g.color(1);
+//            g.draw(lineMesh);
             lineMesh.vertex(0.0,0.0, 0.0);
-            lineMesh.vertex(pos.x,0.0, pos.z);
             lineMesh.vertex(pos);
             lineMesh.index(0);
             lineMesh.index(1);
-            lineMesh.index(1);
-            lineMesh.index(2);
-            lineMesh.index(2);
-            lineMesh.index(0);
             lineMesh.primitive(Mesh::LINES);
             g.color(1);
             g.draw(lineMesh);
@@ -1934,17 +1942,18 @@ public:
                 }
                 g.scale(0.04 + peak * 6);
 
-                if(sl.l_speakers[i].isPhantom){
-                    g.color(0.0,1.0,0.0);
-                }else if(devChan == 0){
-                    g.color(1.0,0.0,0.0);
-                }else if(devChan == 1){
-                    g.color(0.0,0.0,1.0);
-                }else if(!sl.l_speakers[i].enabled->get()){
-                    g.color(0.05,0.05,0.05);
-                }else{
-                    g.color(1);
-                }
+//                if(sl.l_speakers[i].isPhantom){
+//                    g.color(0.0,1.0,0.0);
+//                }else if(devChan == 0){
+//                    g.color(1.0,0.0,0.0);
+//                }else if(devChan == 1){
+//                    g.color(0.0,0.0,1.0);
+//                }else if(!sl.l_speakers[i].enabled->get()){
+//                    g.color(0.05,0.05,0.05);
+//                }else{
+//                    g.color(1);
+//                }
+                g.color(1);
                 g.draw(mSpeakerMesh);
                 g.popMatrix();
             }
